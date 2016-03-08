@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl 
+#!/usr/bin/perl 
 #
 # Author: Jim Clausing
 # Date:   2011-07-11
@@ -10,20 +10,20 @@ use Digest::MD5;
 use Digest::SHA;
 use Getopt::Std;
 
-$VERSION = '1.1';
-$i = getopts('mMsS25V');
+$VERSION = '1.2';
+$i = getopts('ams25V');
 
-die "Usage: $0 [-m][-s][-M][-S][-2][-5][-V][-h] file...
-	-m	No MD5 signature
-	-M	Only MD5 signature (md5sum equiv output)
-	-s	No SHA1 signature
-	-S	Only SHA1 signature (sha1sum equiv output)
-	-2	No SHA256 signature
-	-5	No SHA512 signature
-	-h	This message\n" if defined($i) & $i!=1 & !$opt_m & !$opt_s & !$opt_2 & !$opt_5 & !$opt_M & !$opt_S & !$opt_V;
-die "No signatures specified\n" if $opt_m & $opt_s & $opt_2 & $opt_5;
-die "$0 v$VERSION\nCopyright (c) 2005-2011 Jim Clausing\nIssue $0 -h for more information\n" if $opt_V;
+die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
+	-a	All (MD5, SHA1, SHA256, SHA512) (default if no other options)
+	-m	Only MD5 signature (md5sum equiv output)
+	-s	Only SHA1 signature (sha1sum equiv output)
+	-2	Only SHA256 signature
+	-5	Only SHA512 signature (note: base64 encoded rather than hex)
+	-h	This message\n" if (defined($i) && $opt_h) || $#ARGV==-1;
+die "$0 v$VERSION\nCopyright (c) 2005-2016 Jim Clausing\nIssue $0 -h for more information\n" if $opt_V;
 exit if $#ARGV == -1;
+
+$opt_a = 1 if (!$opt_a && !$opt_m && !$opt_s && !$opt_2 && !$opt_5);
 
 while ($ARGV[0]) {
   $ARGV[0] =~ /^([-\/\@\w.]+)$/;
@@ -56,17 +56,18 @@ while ($ARGV[0]) {
   close(FILE3);
   close(FILE4);
   close(FILE5);
-  if (!$opt_M && !$opt_S) {
+  if ($opt_a) {
       print "$arg:\n";
-      print "  MD5:  $dig1\n" if !$opt_m;
-      print "  SHA1: $dig2\n" if !$opt_s;
-      for ($i=0; $i<8; $i++) {
-          push (@line, substr($dig3,$i*8,8));
-      } 
+      print "  MD5:  $dig1\n";
+      print "  SHA1: $dig2\n";
+      print "  SHA256: $dig3\n";
+#      for ($i=0; $i<8; $i++) {
+#          push (@line, substr($dig3,$i*8,8));
+#      } 
     #  @line = split(/ /,$dig3);
-      $dig3a = join(' ',@line[0..3]);
-      $dig3b = join(' ',@line[4..7]);
-      print "  SHA256: $dig3a\n          $dig3b\n" if !$opt_2;
+#      $dig3a = join(' ',@line[0..3]);
+#      $dig3b = join(' ',@line[4..7]);
+#      print "  SHA256: $dig3a\n          $dig3b\n";
       @line = ();
       for ($i=0; $i<8; $i++) {
           push (@line, substr($dig4,$i*16,16));
@@ -74,11 +75,13 @@ while ($ARGV[0]) {
     #  @line = split(/ /,$dig4);
       $dig4a = join(' ',@line[0..3]);
       $dig4b = join(' ',@line[4..7]);
-      print "  SHA512: $dig4a\n          $dig4b\n" if !$opt_5;
+      print "  SHA512: $dig4a\n          $dig4b\n";
       print "  SHA512: $dig5\n";
   } else {
-      print "$dig1\t$arg\n" if $opt_M;
-      print "$dig2\t$arg\n" if $opt_S;
+      print "$dig1\t$arg\n" if $opt_m;
+      print "$dig2\t$arg\n" if $opt_s;
+      print "$dig3\t$arg\n" if $opt_2;
+      print "$dig5\t$arg\n" if $opt_5;
   }
   shift;
 }

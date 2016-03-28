@@ -35,4 +35,4 @@ elements = [args.root+args.path+'/aufs/diff/'+s for s in layers]
 
 f=":".join(elements)
 
-call("/bin/mount"+" -t aufs -r -o br:"+f+" none "+args.mntpnt, shell=True)
+call("/bin/mount"+" -t aufs -r -o br:"+f+" none "+args.mntpnt, shell=False)

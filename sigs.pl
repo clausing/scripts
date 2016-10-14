@@ -11,7 +11,7 @@ use Digest::SHA;
 use Getopt::Std;
 use Digest::SHA3;
 
-$VERSION = '1.3';
+$VERSION = '1.3.1';
 $i = getopts('ams235V');
 
 die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
@@ -25,7 +25,12 @@ die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
 die "$0 v$VERSION\nCopyright (c) 2005-2016 Jim Clausing\nIssue $0 -h for more information\n" if $opt_V;
 exit if $#ARGV == -1;
 
-$opt_a = 1 if (!$opt_a && !$opt_m && !$opt_s && !$opt_2 && !$opt_5);
+$opt_a = 1 if (!$opt_a && !$opt_m && !$opt_s && !$opt_2 && !$opt_5 && !$opt_3);
+if ($opt_a) {
+  $num_sigs = 100
+} else {
+  $num_sigs = $opt_m + $opt_s + $opt_2 + $opt_5 + $opt_3;
+}
 
 while ($ARGV[0]) {
   $ARGV[0] =~ /^([-\/\@\w.]+)$/;
@@ -68,6 +73,11 @@ while ($ARGV[0]) {
   close(FILE4);
   close(FILE5);
   close(FILE6);
+  $pre1 = ($num_sigs>1?"MD5: ":"");
+  $pre2 = ($num_sigs>1?"SHA1: ":"");
+  $pre3 = ($num_sigs>1?"SHA256: ":"");
+  $pre5 = ($num_sigs>1?"SHA512: ":"");
+  $pre6 = ($num_sigs>1?"SHA3-256: ":"");
   if ($opt_a) {
       print "$arg:\n";
       print "  MD5:  $dig1\n";
@@ -91,11 +101,11 @@ while ($ARGV[0]) {
       print "  SHA512: $dig5\n";
       print "  SHA3-256: $dig6\n";
   } else {
-      print "$dig1\t$arg\n" if $opt_m;
-      print "$dig2\t$arg\n" if $opt_s;
-      print "$dig3\t$arg\n" if $opt_2;
-      print "$dig5\t$arg\n" if $opt_5;
-      print "$dig6\t$arg\n" if $opt_3;
+      print "$pre1$dig1\t$arg\n" if $opt_m;
+      print "$pre2$dig2\t$arg\n" if $opt_s;
+      print "$pre3$dig3\t$arg\n" if $opt_2;
+      print "$pre5$dig5\t$arg\n" if $opt_5;
+      print "$pre6$dig6\t$arg\n" if $opt_3;
   }
   shift;
 }

@@ -11,8 +11,8 @@ use Digest::SHA;
 use Getopt::Std;
 use Digest::SHA3;
 
-$VERSION = '1.2';
-$i = getopts('ams25V');
+$VERSION = '1.3';
+$i = getopts('ams235V');
 
 die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
 	-a	All (MD5, SHA1, SHA256, SHA512, SHA3-512) (default if no other options)

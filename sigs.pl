@@ -1,7 +1,9 @@
 #!/usr/bin/perl 
 #
 # Author: Jim Clausing
-# Date:   2016-10-14
+# Date:   2016-10-17
+#
+# Calculate hashes of files
 #
 
 use Digest::MD5; 
@@ -11,11 +13,11 @@ use Digest::SHA;
 use Getopt::Std;
 use Digest::SHA3;
 
-$VERSION = '1.3.1';
+$VERSION = '1.3.2';
 $i = getopts('ams235V');
 
 die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
-	-a	All (MD5, SHA1, SHA256, SHA512, SHA3-512) (default if no other options)
+	-a	All (MD5, SHA1, SHA256, SHA512, SHA3-256) (default if no other options)
 	-m	Only MD5 signature (md5sum equiv output)
 	-s	Only SHA1 signature (sha1sum equiv output)
 	-2	Only SHA256 signature
@@ -63,7 +65,7 @@ while ($ARGV[0]) {
   }
 #  Probably want to change this to b64digest if we change from SHA3-256 to SHA3-512
   $dig6 = $ctx6->hexdigest;
-#  If we change it to SHA3-512 uncomment the following
+#  or if we change it to SHA3-512 but keep hexdigest, uncomment the following
 #  while (length($dig6) % 4) {
 #      $dig6 .= '=';
 #  }

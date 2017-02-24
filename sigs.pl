@@ -23,7 +23,8 @@ die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
 	-2	Only SHA256 signature
 	-3	Only SHA3-256 signature
 	-5	Only SHA512 signature (note: base64 encoded rather than hex)
-	-h	This message\n" if (defined($i) && $opt_h) || $#ARGV==-1;
+	-V	print version
+	-h	This message\n" if (defined($i) && $opt_h) || ($#ARGV==-1 && !$opt_V);
 die "$0 v$VERSION\nCopyright (c) 2005-2016 Jim Clausing\nIssue $0 -h for more information\n" if $opt_V;
 exit if $#ARGV == -1;
 

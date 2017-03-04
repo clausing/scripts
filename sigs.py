@@ -44,7 +44,7 @@ def print_hashes():
             print '  SHA3-256: '+sha3.hexdigest()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Calculate hashes')
     parser.add_argument("files", metavar='FILE', nargs='*', help='files to manipulate, if empty, use stdin')
     parser.add_argument('-a','--all', action='store_true', 
             help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',

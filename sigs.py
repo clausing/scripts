@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+#
+# Rewrite of my perl sigs script in python.
+# Calculate hashes of files
+# 
+# Author: Jim Clausing
+# Date: 2017-03-04
+# Version: 0.1
+
+import sys
+import argparse
+import hashlib
+if sys.version_info < (3, 6):
+    import sha3
+import fileinput
+import base64
+
+__version_info__ = (0,1,0)
+__version__ = ".".join(map(str, __version_info__))
+
+def print_hashes():
+    if hashcnt == 1:
+        if args.md5:
+            print md5.hexdigest()+'\t'+file
+        elif args.sha1:
+            print sha1.hexdigest()+'\t'+file
+        elif args.sha256:
+            print sha256.hexdigest()+'\t'+file
+        elif args.sha3:
+            print sha3.hexdigest()+'\t'+file
+        elif args.sha512:
+            print base64.b64encode(sha512.digest())+'\t'+file
+    else:
+        print file+":"
+        if args.md5 or args.all:
+            print '  MD5:  '+md5.hexdigest()
+        if args.sha1 or args.all:
+            print '  SHA1: '+sha1.hexdigest()
+        if args.sha256 or args.all:
+            print '  SHA256: '+sha256.hexdigest()
+        if args.sha512 or args.all:
+            print '  SHA512: '+base64.b64encode(sha512.digest())
+        if args.sha3 or args.all:
+            print '  SHA3-256: '+sha3.hexdigest()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("files", metavar='FILE', nargs='*', help='files to manipulate, if empty, use stdin')
+    parser.add_argument('-a','--all', action='store_true', 
+            help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
+            default='true')
+    parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output')
+    parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output')
+    parser.add_argument('-2','--sha256', action='store_true', 
+            help='SHA2 (or more accurately SHA2-256) signature (sha256sum equivalent output')
+    parser.add_argument('-3','--sha3', action='store_true', help='SHA3-256 signature')
+    parser.add_argument('-5','--sha512', action='store_true', 
+            help='SHA512 (or more accurately SHA2-512) signature (base64 encoded rather than hex)')
+    parser.add_argument('-V','--version', action='version', help='print version number', 
+            version='%(prog)s v' + __version__)
+    args = parser.parse_args()
+
+    if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha512):
+        args.all = False 
+
+    hashcnt = 0
+    if (args.all):
+        hashcnt = 5
+    if (args.md5):
+        hashcnt += 1
+    if (args.sha1):
+        hashcnt += 1
+    if (args.sha256):
+        hashcnt += 1
+    if (args.sha3):
+        hashcnt += 1
+    if (args.sha512):
+        hashcnt += 1
+        
+    for file in args.files:
+        md5 = hashlib.md5()
+        sha1 = hashlib.sha1()
+        sha256 = hashlib.sha256()
+        sha3 = hashlib.sha3_256()
+        sha512 = hashlib.sha512()
+        with open(file, "rb") as f:
+            for block in iter(lambda: f.read(65536), b""):
+                if (args.md5 or args.all):
+                    md5.update(block)
+                if (args.sha1 or args.all):
+                    sha1.update(block)
+                if (args.sha256 or args.all):
+                    sha256.update(block)
+                if (args.sha3 or args.all):
+                    sha3.update(block)
+                if (args.sha512 or args.all):
+                    sha512.update(block)
+        print_hashes()
+
+    sys.exit(0)

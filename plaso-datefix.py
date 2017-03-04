@@ -3,7 +3,7 @@
 # Massage plaso l2tcsv output to use ISO(-ish) datetimestamp
 # 
 # Author: Jim Clausing
-# Date: 2017-01-17
+# Date: 2017-02-15
 # Version: 0.2
 
 import sys
@@ -11,7 +11,7 @@ import argparse
 import fileinput
 import csv
 
-__version_info__ = (0,2,0)
+__version_info__ = (0,3,0)
 __version__ = ".".join(map(str, __version_info__))
 
 

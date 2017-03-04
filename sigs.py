@@ -15,7 +15,7 @@ if sys.version_info < (3, 6):
 import fileinput
 import base64
 
-__version_info__ = (0,1,0)
+__version_info__ = (1,0,0)
 __version__ = ".".join(map(str, __version_info__))
 
 def print_hashes():
@@ -49,13 +49,13 @@ if __name__ == '__main__':
     parser.add_argument('-a','--all', action='store_true', 
             help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
             default='true')
-    parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output')
-    parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output')
+    parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output)')
+    parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output)')
     parser.add_argument('-2','--sha256', action='store_true', 
-            help='SHA2 (or more accurately SHA2-256) signature (sha256sum equivalent output')
+            help='SHA2 (aka SHA2-256) signature (sha256sum equivalent output)')
     parser.add_argument('-3','--sha3', action='store_true', help='SHA3-256 signature')
     parser.add_argument('-5','--sha512', action='store_true', 
-            help='SHA512 (or more accurately SHA2-512) signature (base64 encoded rather than hex)')
+            help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
     parser.add_argument('-V','--version', action='version', help='print version number', 
             version='%(prog)s v' + __version__)
     args = parser.parse_args()

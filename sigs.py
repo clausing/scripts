@@ -4,8 +4,8 @@
 # Calculate hashes of files
 # 
 # Author: Jim Clausing
-# Date: 2017-03-07
-# Version: 1.1
+# Date: 2017-03-08
+# Version: 1.1.1
 
 import sys
 import os
@@ -15,7 +15,7 @@ if sys.version_info < (3, 6):
     import sha3
 import base64
 
-__version_info__ = (1,1,0)
+__version_info__ = (1,2,0)
 __version__ = ".".join(map(str, __version_info__))
 
 def hash_file(fname):
@@ -23,7 +23,7 @@ def hash_file(fname):
     md5 = hashlib.md5()
     sha1 = hashlib.sha1()
     sha256 = hashlib.sha256()
-    sha3 = hashlib.sha3_256()
+    sha3 = hashlib.sha3_384()
     sha512 = hashlib.sha512()
     with open(fname, "rb") as f:
         for block in iter(lambda: f.read(65536), b""):
@@ -61,7 +61,7 @@ def print_hashes(fname):
         if args.sha512 or args.all:
             print '  SHA512: '+base64.b64encode(sha512.digest())
         if args.sha3 or args.all:
-            print '  SHA3-256: '+sha3.hexdigest()
+            print '  SHA3-384: '+sha3.hexdigest()
 
 def count_hashes():
     global hashcnt
@@ -87,13 +87,13 @@ if __name__ == '__main__':
             version='%(prog)s v' + __version__)
     parser.add_argument('-r','--recursive', action='store_true', help='recursive mode. All subdirectories are traversed')
     parser.add_argument('-a','--all', action='store_true', 
-            help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
+            help='All (MD5, SHA1, SHA256, SHA512, and SHA3-384), default if no other options chosen',
             default='true')
     parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output)')
     parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output)')
     parser.add_argument('-2','--sha256', action='store_true', 
             help='SHA2 (aka SHA2-256) signature (sha256sum equivalent output)')
-    parser.add_argument('-3','--sha3', action='store_true', help='SHA3-256 signature')
+    parser.add_argument('-3','--sha3', action='store_true', help='SHA3-384 signature')
     parser.add_argument('-5','--sha512', action='store_true', 
             help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
     parser.add_argument('-f','--fullpath', action='store_true', help='print full path rather than relative')

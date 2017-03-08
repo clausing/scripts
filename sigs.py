@@ -63,27 +63,8 @@ def print_hashes(fname):
         if args.sha3 or args.all:
             print '  SHA3-256: '+sha3.hexdigest()
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Calculate hashes')
-    parser.add_argument("files", metavar='FILE', nargs='*', help='files to hash')
-    parser.add_argument('-r','--recursive', action='store_true', help='recursive mode. All subdirectories are traversed')
-    parser.add_argument('-a','--all', action='store_true', 
-            help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
-            default='true')
-    parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output)')
-    parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output)')
-    parser.add_argument('-2','--sha256', action='store_true', 
-            help='SHA2 (aka SHA2-256) signature (sha256sum equivalent output)')
-    parser.add_argument('-3','--sha3', action='store_true', help='SHA3-256 signature')
-    parser.add_argument('-5','--sha512', action='store_true', 
-            help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
-    parser.add_argument('-V','--version', action='version', help='print version number', 
-            version='%(prog)s v' + __version__)
-    args = parser.parse_args()
-
-    if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha512):
-        args.all = False 
-
+def count_hashes():
+    global hashcnt
     hashcnt = 0
     if (args.all):
         hashcnt = 5
@@ -97,19 +78,48 @@ if __name__ == '__main__':
         hashcnt += 1
     if (args.sha512):
         hashcnt += 1
-        
-    if (args.recursive):
-        for path in args.files:
-            for root, directories, filenames in os.walk(os.path.abspath(path)):
+
+if __name__ == '__main__':
+# define switches and commandline arguments
+    parser = argparse.ArgumentParser(description='Calculate hashes')
+    parser.add_argument("files", metavar='FILE', nargs='+', help='files to hash')
+    parser.add_argument('-V','--version', action='version', help='print version number', 
+            version='%(prog)s v' + __version__)
+    parser.add_argument('-r','--recursive', action='store_true', help='recursive mode. All subdirectories are traversed')
+    parser.add_argument('-a','--all', action='store_true', 
+            help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
+            default='true')
+    parser.add_argument('-m','--md5', action='store_true', help='MD5 signature (md5sum equivalent output)')
+    parser.add_argument('-s','--sha1', action='store_true', help='SHA1 signature (sha1sum equivalent output)')
+    parser.add_argument('-2','--sha256', action='store_true', 
+            help='SHA2 (aka SHA2-256) signature (sha256sum equivalent output)')
+    parser.add_argument('-3','--sha3', action='store_true', help='SHA3-256 signature')
+    parser.add_argument('-5','--sha512', action='store_true', 
+            help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
+    parser.add_argument('-f','--fullpath', action='store_true', help='print full path rather than relative')
+    args = parser.parse_args()
+
+# if any hash switches are specified turn -a off
+    if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha512):
+        args.all = False 
+
+# count whether a non-zero number of hashes are specified (affects output format)
+    count_hashes()
+
+# process commandline arguments
+    for path in args.files:
+        if os.path.isdir(os.path.abspath(path)) and args.recursive:
+            if args.fullpath:
+                path = os.path.abspath(path)
+            for root, directories, filenames in os.walk(path):
                 for filename in filenames: 
                     fname = os.path.join(root,filename)
                     if os.path.isfile(fname):
                         hash_file(fname)
                         print_hashes(fname)
-    else:
-        for filename in args.files:
-            if os.path.isfile(filename):
-                hash_file(filename)
-                print_hashes(filename)
+        else:
+            if os.path.isfile(path):
+                hash_file(path)
+                print_hashes(path)
 
     sys.exit(0)

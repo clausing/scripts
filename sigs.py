@@ -4,34 +4,54 @@
 # Calculate hashes of files
 # 
 # Author: Jim Clausing
-# Date: 2017-03-04
-# Version: 0.1
+# Date: 2017-03-07
+# Version: 1.1
 
 import sys
+import os
 import argparse
 import hashlib
 if sys.version_info < (3, 6):
     import sha3
-import fileinput
 import base64
 
-__version_info__ = (1,0,0)
+__version_info__ = (1,1,0)
 __version__ = ".".join(map(str, __version_info__))
 
-def print_hashes():
+def hash_file(fname):
+    global md5, sha1, sha256, sha3, sha512
+    md5 = hashlib.md5()
+    sha1 = hashlib.sha1()
+    sha256 = hashlib.sha256()
+    sha3 = hashlib.sha3_256()
+    sha512 = hashlib.sha512()
+    with open(fname, "rb") as f:
+        for block in iter(lambda: f.read(65536), b""):
+            if (args.md5 or args.all):
+                md5.update(block)
+            if (args.sha1 or args.all):
+                sha1.update(block)
+            if (args.sha256 or args.all):
+                sha256.update(block)
+            if (args.sha3 or args.all):
+                sha3.update(block)
+            if (args.sha512 or args.all):
+                sha512.update(block)
+
+def print_hashes(fname):
     if hashcnt == 1:
         if args.md5:
-            print md5.hexdigest()+'\t'+file
+            print md5.hexdigest()+'\t'+fname
         elif args.sha1:
-            print sha1.hexdigest()+'\t'+file
+            print sha1.hexdigest()+'\t'+fname
         elif args.sha256:
-            print sha256.hexdigest()+'\t'+file
+            print sha256.hexdigest()+'\t'+fname
         elif args.sha3:
-            print sha3.hexdigest()+'\t'+file
+            print sha3.hexdigest()+'\t'+fname
         elif args.sha512:
-            print base64.b64encode(sha512.digest())+'\t'+file
+            print base64.b64encode(sha512.digest())+'\t'+fname
     else:
-        print file+":"
+        print fname+":"
         if args.md5 or args.all:
             print '  MD5:  '+md5.hexdigest()
         if args.sha1 or args.all:
@@ -45,7 +65,8 @@ def print_hashes():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calculate hashes')
-    parser.add_argument("files", metavar='FILE', nargs='*', help='files to manipulate, if empty, use stdin')
+    parser.add_argument("files", metavar='FILE', nargs='*', help='files to hash')
+    parser.add_argument('-r','--recursive', action='store_true', help='recursive mode. All subdirectories are traversed')
     parser.add_argument('-a','--all', action='store_true', 
             help='All (MD5, SHA1, SHA256, SHA512, and SHA3-256), default if no other options chosen',
             default='true')
@@ -77,24 +98,18 @@ if __name__ == '__main__':
     if (args.sha512):
         hashcnt += 1
         
-    for file in args.files:
-        md5 = hashlib.md5()
-        sha1 = hashlib.sha1()
-        sha256 = hashlib.sha256()
-        sha3 = hashlib.sha3_256()
-        sha512 = hashlib.sha512()
-        with open(file, "rb") as f:
-            for block in iter(lambda: f.read(65536), b""):
-                if (args.md5 or args.all):
-                    md5.update(block)
-                if (args.sha1 or args.all):
-                    sha1.update(block)
-                if (args.sha256 or args.all):
-                    sha256.update(block)
-                if (args.sha3 or args.all):
-                    sha3.update(block)
-                if (args.sha512 or args.all):
-                    sha512.update(block)
-        print_hashes()
+    if (args.recursive):
+        for path in args.files:
+            for root, directories, filenames in os.walk(os.path.abspath(path)):
+                for filename in filenames: 
+                    fname = os.path.join(root,filename)
+                    if os.path.isfile(fname):
+                        hash_file(fname)
+                        print_hashes(fname)
+    else:
+        for filename in args.files:
+            if os.path.isfile(filename):
+                hash_file(filename)
+                print_hashes(filename)
 
     sys.exit(0)

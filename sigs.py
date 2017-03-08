@@ -15,7 +15,7 @@ if sys.version_info < (3, 6):
     import sha3
 import base64
 
-__version_info__ = (1,2,0)
+__version_info__ = (1,3,0)
 __version__ = ".".join(map(str, __version_info__))
 
 def hash_file(fname):
@@ -26,7 +26,7 @@ def hash_file(fname):
     sha3 = hashlib.sha3_384()
     sha512 = hashlib.sha512()
     with open(fname, "rb") as f:
-        for block in iter(lambda: f.read(65536), b""):
+        for block in iter(lambda: f.read(args.block), b""):
             if (args.md5 or args.all):
                 md5.update(block)
             if (args.sha1 or args.all):
@@ -97,6 +97,7 @@ if __name__ == '__main__':
     parser.add_argument('-5','--sha512', action='store_true', 
             help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
     parser.add_argument('-f','--fullpath', action='store_true', help='print full path rather than relative')
+    parser.add_argument('-b','--block', metavar='blk', type=int, default=65536, help='block size to read file, default = 65536')
     args = parser.parse_args()
 
 # if any hash switches are specified turn -a off

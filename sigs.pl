@@ -13,7 +13,7 @@ use Digest::SHA;
 use Getopt::Std;
 use Digest::SHA3;
 
-$VERSION = '1.3.2';
+$VERSION = '1.4.0';
 $i = getopts('ams235V');
 
 die "Usage: $0 [-a][-m][-s][-M][-S][-2][-5][-V][-h] file...
@@ -50,6 +50,12 @@ while ($ARGV[0]) {
   open (FILE4, $arg);
   open (FILE5, $arg);
   open (FILE6, $arg);
+  binmode(FILE1);
+  binmode(FILE2);
+  binmode(FILE3);
+  binmode(FILE4);
+  binmode(FILE5);
+  binmode(FILE6);
   $ctx1->addfile(*FILE1);
   $ctx2->addfile(*FILE2);
   $ctx3->addfile(*FILE3);

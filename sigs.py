@@ -4,8 +4,8 @@
 # Calculate hashes of files
 # 
 # Author: Jim Clausing
-# Date: 2017-03-08
-# Version: 1.1.1
+# Date: 2017-03-15
+# Version: 1.3.0
 
 import sys
 import os

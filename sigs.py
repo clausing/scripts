@@ -5,7 +5,7 @@
 # 
 # Author: Jim Clausing
 # Date: 2017-03-15
-# Version: 1.3.0
+# Version: 1.4.0
 
 import sys
 import os
@@ -16,7 +16,7 @@ if sys.version_info < (3, 6):
 import base64
 import contextlib
 
-__version_info__ = (1,3,0)
+__version_info__ = (1,4,0)
 __version__ = ".".join(map(str, __version_info__))
 
 @contextlib.contextmanager
@@ -31,6 +31,19 @@ def smart_open(filename=None):
     finally:
         if fh is not sys.stdin:
             fh.close()
+
+def print_header():
+    if args.md5 or args.all:
+        sys.stdout.write('md5|')
+    if args.sha1 or args.all:
+        sys.stdout.write('sha1|')
+    if args.sha256 or args.all:
+        sys.stdout.write('sha256|')
+    if args.sha512 or args.all:
+        sys.stdout.write('sha512|')
+    if args.sha3 or args.all:
+        sys.stdout.write('sha3|')
+    print "filename"
 
 def hash_file(fname):
     global md5, sha1, sha256, sha3, sha512
@@ -64,6 +77,18 @@ def print_hashes(fname):
             print sha3.hexdigest()+'\t'+fname
         elif args.sha512:
             print base64.b64encode(sha512.digest())+'\t'+fname
+    elif args.psv:
+        if args.md5 or args.all:
+            sys.stdout.write(md5.hexdigest()+'|')
+        if args.sha1 or args.all:
+            sys.stdout.write(sha1.hexdigest()+'|')
+        if args.sha256 or args.all:
+            sys.stdout.write(sha256.hexdigest()+'|')
+        if args.sha512 or args.all:
+            sys.stdout.write(base64.b64encode(sha512.digest())+'|')
+        if args.sha3 or args.all:
+            sys.stdout.write(sha3.hexdigest()+'|')
+        print fname
     else:
         print fname+":"
         if args.md5 or args.all:
@@ -112,11 +137,15 @@ if __name__ == '__main__':
             help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
     parser.add_argument('-f','--fullpath', action='store_true', help='print full path rather than relative')
     parser.add_argument('-b','--block', metavar='blk', type=int, default=65536, help='block size to read file, default = 65536')
+    parser.add_argument('-p','--psv', action='store_true', help='write output as pipe separated values')
     args = parser.parse_args()
 
 # if any hash switches are specified turn -a off
     if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha512):
         args.all = False 
+
+    if args.psv:
+        print_header()
 
 # count whether a non-zero number of hashes are specified (affects output format)
     count_hashes()

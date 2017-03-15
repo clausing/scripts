@@ -14,9 +14,23 @@ import hashlib
 if sys.version_info < (3, 6):
     import sha3
 import base64
+import contextlib
 
 __version_info__ = (1,3,0)
 __version__ = ".".join(map(str, __version_info__))
+
+@contextlib.contextmanager
+def smart_open(filename=None):
+    if filename and filename != '-':
+        fh = open(filename, 'rb')
+    else:
+        fh = sys.stdin
+
+    try:
+        yield fh
+    finally:
+        if fh is not sys.stdin:
+            fh.close()
 
 def hash_file(fname):
     global md5, sha1, sha256, sha3, sha512
@@ -25,7 +39,7 @@ def hash_file(fname):
     sha256 = hashlib.sha256()
     sha3 = hashlib.sha3_384()
     sha512 = hashlib.sha512()
-    with open(fname, "rb") as f:
+    with smart_open(fname) as f:
         for block in iter(lambda: f.read(args.block), b""):
             if (args.md5 or args.all):
                 md5.update(block)
@@ -82,7 +96,7 @@ def count_hashes():
 if __name__ == '__main__':
 # define switches and commandline arguments
     parser = argparse.ArgumentParser(description='Calculate hashes')
-    parser.add_argument("files", metavar='FILE', nargs='+', help='files to hash')
+    parser.add_argument("files", metavar='FILE', nargs='*', default='-', help='files to hash')
     parser.add_argument('-V','--version', action='version', help='print version number', 
             version='%(prog)s v' + __version__)
     parser.add_argument('-r','--recursive', action='store_true', help='recursive mode. All subdirectories are traversed')
@@ -119,7 +133,7 @@ if __name__ == '__main__':
                         hash_file(fname)
                         print_hashes(fname)
         else:
-            if os.path.isfile(path):
+            if os.path.isfile(path) or path == '-':
                 hash_file(path)
                 print_hashes(path)
 

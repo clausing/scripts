@@ -3,15 +3,15 @@
 # Massage plaso l2tcsv output to use ISO-8601(-ish) datetimestamp
 # 
 # Author: Jim Clausing
-# Date: 2017-03-04
-# Version: 0.3
+# Date: 2017-03-22
+# Version: 0.3.1
 
 import sys
 import argparse
 import fileinput
-import csv
+#import csv
 
-__version_info__ = (0,3,0)
+__version_info__ = (0,3,1)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -22,8 +22,9 @@ if __name__ == '__main__':
             version='%(prog)s v' + __version__)
     args = parser.parse_args()
 
-    for line in csv.reader(fileinput.input(files=args.files if len(args.files) > 0 else
-            ('-', ))):
+    for lines in fileinput.input(files=args.files if len(args.files) > 0 else
+            ('-', )):
+        line = lines.rstrip('\n').split(',')
         date = line[0]
         if date == 'date':
             print 'datestamp,'+','.join(line[3:])

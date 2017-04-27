@@ -4,8 +4,8 @@
 # Calculate hashes of files
 # 
 # Author: Jim Clausing
-# Date: 2017-03-15
-# Version: 1.4.0
+# Date: 2017-04-27
+# Version: 1.4.1
 
 import sys
 import os
@@ -16,7 +16,7 @@ if sys.version_info < (3, 6):
 import base64
 import contextlib
 
-__version_info__ = (1,4,0)
+__version_info__ = (1,4,1)
 __version__ = ".".join(map(str, __version_info__))
 
 @contextlib.contextmanager
@@ -41,16 +41,19 @@ def print_header():
         sys.stdout.write('sha256|')
     if args.sha512 or args.all:
         sys.stdout.write('sha512|')
+    if args.sha3_224 or args.all:
+        sys.stdout.write('sha3-224|')
     if args.sha3 or args.all:
-        sys.stdout.write('sha3|')
+        sys.stdout.write('sha3-384|')
     print "filename"
 
 def hash_file(fname):
-    global md5, sha1, sha256, sha3, sha512
+    global md5, sha1, sha256, sha3_224, sha3, sha512
     md5 = hashlib.md5()
     sha1 = hashlib.sha1()
     sha256 = hashlib.sha256()
     sha3 = hashlib.sha3_384()
+    sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
     with smart_open(fname) as f:
         for block in iter(lambda: f.read(args.block), b""):
@@ -60,6 +63,8 @@ def hash_file(fname):
                 sha1.update(block)
             if (args.sha256 or args.all):
                 sha256.update(block)
+            if (args.sha3_224 or args.all):
+                sha3_224.update(block)
             if (args.sha3 or args.all):
                 sha3.update(block)
             if (args.sha512 or args.all):
@@ -73,6 +78,8 @@ def print_hashes(fname):
             print sha1.hexdigest()+'\t'+fname
         elif args.sha256:
             print sha256.hexdigest()+'\t'+fname
+        elif args.sha3_224:
+            print sha3_224.hexdigest()+'\t'+fname
         elif args.sha3:
             print sha3.hexdigest()+'\t'+fname
         elif args.sha512:
@@ -86,6 +93,8 @@ def print_hashes(fname):
             sys.stdout.write(sha256.hexdigest()+'|')
         if args.sha512 or args.all:
             sys.stdout.write(base64.b64encode(sha512.digest())+'|')
+        if args.sha3_224 or args.all:
+            sys.stdout.write(sha3_224.hexdigest()+'|')
         if args.sha3 or args.all:
             sys.stdout.write(sha3.hexdigest()+'|')
         print fname
@@ -99,6 +108,8 @@ def print_hashes(fname):
             print '  SHA256: '+sha256.hexdigest()
         if args.sha512 or args.all:
             print '  SHA512: '+base64.b64encode(sha512.digest())
+        if args.sha3_224 or args.all:
+            print '  SHA3-224: '+sha3_224.hexdigest()
         if args.sha3 or args.all:
             print '  SHA3-384: '+sha3.hexdigest()
 
@@ -113,7 +124,11 @@ def count_hashes():
         hashcnt += 1
     if (args.sha256):
         hashcnt += 1
+    if (args.sha3_224):
+        hashcnt += 1
     if (args.sha3):
+        hashcnt += 1
+    if (args.sha3_224):
         hashcnt += 1
     if (args.sha512):
         hashcnt += 1
@@ -133,6 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('-2','--sha256', action='store_true', 
             help='SHA2 (aka SHA2-256) signature (sha256sum equivalent output)')
     parser.add_argument('-3','--sha3', action='store_true', help='SHA3-384 signature')
+    parser.add_argument('-t','--sha3_224', action='store_true', help='SHA3-224 signature')
     parser.add_argument('-5','--sha512', action='store_true', 
             help='SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)')
     parser.add_argument('-f','--fullpath', action='store_true', help='print full path rather than relative')
@@ -141,7 +157,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 # if any hash switches are specified turn -a off
-    if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha512):
+    if (args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512):
         args.all = False 
 
     if args.psv:

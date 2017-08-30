@@ -3,8 +3,8 @@
 # Author: Jim Clausing
 # Date: 2017-08-30
 # Desc: rewrite of the sleithkit mac-robber in Python
-# Unlinke the TSK version, this one actually includes the MD5 and the inode number
-# though i still return a 0 in the MD5 column for non-regular files
+# Unlinke the TSK version, this one actually includes the MD5 & inode number
+# though I still return a 0 in the MD5 column for non-regular files
 # 
 
 import os
@@ -12,7 +12,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,0)
+__version_info__ = (1,0,1)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -70,7 +70,6 @@ def process_item(dirpath,item):
         md5str = md5.hexdigest()
     else:
         md5str = "0"
-    #mode = oct(S_IMODE(status.st_mode))
     mode = mode_to_string(status.st_mode)
     mtime = status.st_mtime
     atime = status.st_atime

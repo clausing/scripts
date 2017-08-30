@@ -8,11 +8,12 @@
 # 
 
 import os
+import sys
 import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,3)
+__version_info__ = (1,0,4)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -57,19 +58,25 @@ def mode_to_string(mode):
 def process_item(dirpath,item):
     md5 = hashlib.md5()
     fname = os.path.join(dirpath,item)
-    if os.path.islink(fname):
-        status = os.lstat(fname)
-    else:
-        status = os.stat(fname)
-    if S_ISREG(status.st_mode):
-        with open(fname, "rb") as f:
-            for block in iter(lambda: f.read(65536), b""):
-                md5.update(block)
-        md5str = md5.hexdigest()
+    try:
+        if os.path.islink(fname):
+            status = os.lstat(fname)
+        else:
+            status = os.stat(fname)
+    except IOerror:
+        return
+    if S_ISREG(status.st_mode) and fname.find('/proc') != 0 and not args.nohashes:
+        try:
+            with open(fname, "rb") as f:
+                for block in iter(lambda: f.read(65536), b""):
+                    md5.update(block)
+            md5str = md5.hexdigest()
+        except IOerror:
+            md5str = "0"
     else:
         md5str = "0"
     mode = mode_to_string(status.st_mode)
-    if os.path.islink(fname):
+    if os.path.islink(fname) and status.st_size > 0:
         mode = mode + ' -> ' + os.readlink(fname)
     mtime = status.st_mtime
     atime = status.st_atime
@@ -79,12 +86,18 @@ def process_item(dirpath,item):
     uid = status.st_uid
     gid = status.st_gid
     inode = status.st_ino
+    if args.prefix:
+        if fname.find('/') == 0:
+            fname = args.prefix + fname
+        else:
+            fname = args.prefix + '/' + fname
     return md5str+'|'+fname+'|'+str(inode)+'|'+mode+'|'+str(uid)+'|'+str(gid)+'|'+str(size)+'|'+str(atime)+'|'+str(mtime)+'|'+str(ctime)+'|'+str(btime)
     
 
 parser = argparse.ArgumentParser(description='collect data on files')
-parser.add_argument('directories', metavar='DIRS', nargs='+', help='directories to traverse')
+parser.add_argument('directories', metavar='DIR', nargs='+', help='directories to traverse')
 parser.add_argument('-m','--prefix', help='prefix string')
+parser.add_argument('-n','--nohashes', action='store_true', help='skip MD5 calculation', default=False)
 parser.add_argument('-V','--version',  action='version', help='print version number',
                     version='%(prog)s v' + __version__)
 
@@ -93,6 +106,12 @@ args = parser.parse_args()
 for directory in args.directories:
     for dirpath,dirs,files in os.walk(directory):
         for directory in dirs:
-            print process_item(dirpath,directory)
+            outstr = process_item(dirpath,directory)
+            if len(outstr) > 0:
+                print outstr
+                sys.stdout.flush()
         for filename in files:
-            print process_item(dirpath,filename)
+            outstr = process_item(dirpath,filename)
+            if len(outstr) > 0:
+                print outstr
+                sys.stdout.flush()

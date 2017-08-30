@@ -13,7 +13,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,4)
+__version_info__ = (1,0,5)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -99,7 +99,7 @@ parser.add_argument('directories', metavar='DIR', nargs='+', help='directories t
 parser.add_argument('-m','--prefix', help='prefix string')
 parser.add_argument('-n','--nohashes', action='store_true', help='skip MD5 calculation', default=False)
 parser.add_argument('-V','--version',  action='version', help='print version number',
-                    version='%(prog)s v' + __version__)
+                    version='%(prog)s v{version}'.format(version= __version__))
 
 args = parser.parse_args()
 

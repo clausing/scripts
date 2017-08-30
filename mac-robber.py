@@ -12,7 +12,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,1)
+__version_info__ = (1,0,2)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -59,10 +59,8 @@ def process_item(dirpath,item):
     fname = os.path.join(dirpath,item)
     if os.path.islink(fname):
         status = os.lstat(fname)
-        filename = fname + ' -> ' + os.readlink(fname)
     else:
         status = os.stat(fname)
-        filename = fname
     if S_ISREG(status.st_mode):
         with open(fname, "rb") as f:
             for block in iter(lambda: f.read(65536), b""):
@@ -71,6 +69,8 @@ def process_item(dirpath,item):
     else:
         md5str = "0"
     mode = mode_to_string(status.st_mode)
+    if os.path.islink(fname):
+        mode = mode + ' -> ' + os.readlink(fname)
     mtime = status.st_mtime
     atime = status.st_atime
     ctime = status.st_mtime
@@ -79,7 +79,7 @@ def process_item(dirpath,item):
     uid = status.st_uid
     gid = status.st_gid
     inode = status.st_ino
-    return md5str+'|'+filename+'|'+str(inode)+'|'+mode+'|'+str(uid)+'|'+str(gid)+'|'+str(size)+'|'+str(atime)+'|'+str(mtime)+'|'+str(ctime)+'|'+str(btime)
+    return md5str+'|'+fname+'|'+str(inode)+'|'+mode+'|'+str(uid)+'|'+str(gid)+'|'+str(size)+'|'+str(atime)+'|'+str(mtime)+'|'+str(ctime)+'|'+str(btime)
     
 
 parser = argparse.ArgumentParser(description='collect data on files')

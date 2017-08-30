@@ -12,7 +12,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,2)
+__version_info__ = (1,0,3)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -36,21 +36,21 @@ def mode_to_string(mode):
         if mode & 0100:
             own_mode = own_mode.replace('x','s')
         else:
-            own_mode = own_mode.replace('-$','S')
+            own_mode = own_mode[:1] + 'S'
     mode_str = mode_str + own_mode
     grp_mode = lookup[(mode & 070)>>3]
     if mode & 02000:
         if mode & 010:
             grp_mode = grp_mode.replace('x','s')
         else:
-            grp_mode = grp_mode.replace('-$','S')
+            grp_mode = grp_mode[:1] + 'S'
     mode_str = mode_str + own_mode
     oth_mode = lookup[(mode & 07)]
     if mode & 01000:
         if mode & 01:
             oth_mode = oth_mode.replace('x','t')
         else:
-            oth_mode = oth_mode.replace('-$','T')
+            oth_mode = oth_mode[:1] + 'T'
     mode_str = mode_str + oth_mode
     return mode_str
 

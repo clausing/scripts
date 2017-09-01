@@ -7,6 +7,14 @@
 # though I still return a 0 in the MD5 column for non-regular files, but calculating
 # hashes likely will modify atime, so it is turned off by default
 # 
+# A useful way to use this on a live Linux system is with read-only --bind mounts
+#
+#   # mount --bind / /mnt
+#   # mount -o ro,remount,bind /mnt
+#   # ./mac-robber.py -5 -x /mnt/mnt -r /mnt -m system-foo:/ /mnt
+#
+# This gets us hashes, but because the bind mount is read-only doesn't update atimes
+#
 
 import os
 import sys
@@ -14,7 +22,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,6)
+__version_info__ = (1,0,7)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -59,6 +67,8 @@ def mode_to_string(mode):
 def process_item(dirpath,item):
     md5 = hashlib.md5()
     fname = os.path.join(dirpath,item)
+    if args.exclude and (fname in args.exclude or dirpath in args.exclude):
+        return
     try:
         if os.path.islink(fname):
             status = os.lstat(fname)
@@ -87,6 +97,9 @@ def process_item(dirpath,item):
     uid = status.st_uid
     gid = status.st_gid
     inode = status.st_ino
+    if args.rmprefix:
+        if fname.startswith(args.rmprefix):
+            fname = fname[len(args.rmprefix):]
     if args.prefix:
         if fname.find('/') == 0:
             fname = args.prefix + fname
@@ -97,8 +110,10 @@ def process_item(dirpath,item):
 
 parser = argparse.ArgumentParser(description='collect data on files')
 parser.add_argument('directories', metavar='DIR', nargs='+', help='directories to traverse')
-parser.add_argument('-m','--prefix', help='prefix string')
+parser.add_argument('-m','--prefix', metavar='PREFIX', help='prefix string')
 parser.add_argument('-5','--hashes', action='store_true', help='do MD5 calculation', default=False)
+parser.add_argument('-x','--exclude', metavar='EXCLUDE', action='append', help='directory trees or files to exclude')
+parser.add_argument('-r','--rmprefix', metavar='RMPREFIX', help='prefix to remove, useful when using read-only --bind mount to prevent atime updates')
 parser.add_argument('-V','--version',  action='version', help='print version number',
                     version='%(prog)s v{version}'.format(version= __version__))
 
@@ -106,12 +121,15 @@ args = parser.parse_args()
 
 for directory in args.directories:
     for dirpath,dirs,files in os.walk(directory):
+        dirs[:] = [d for d in dirs if d not in args.exclude]
         for directory in dirs:
             outstr = process_item(dirpath,directory)
             if outstr is not None:
                 print outstr
                 sys.stdout.flush()
         for filename in files:
+            if filename in args.exclude:
+                continue
             outstr = process_item(dirpath,filename)
             if outstr is not None:
                 print outstr

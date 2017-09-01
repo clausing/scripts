@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 #
 # Author: Jim Clausing
-# Date: 2017-08-30
+# Date: 2017-09-01
 # Desc: rewrite of the sleithkit mac-robber in Python
-# Unlinke the TSK version, this one actually includes the MD5 & inode number
-# though I still return a 0 in the MD5 column for non-regular files
+# Unlinke the TSK version, this one can actually includes the MD5 & inode number
+# though I still return a 0 in the MD5 column for non-regular files, but calculating
+# hashes likely will modify atime, so it is turned off by default
 # 
 
 import os
@@ -13,7 +14,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,5)
+__version_info__ = (1,0,6)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -65,7 +66,7 @@ def process_item(dirpath,item):
             status = os.stat(fname)
     except IOerror:
         return
-    if S_ISREG(status.st_mode) and fname.find('/proc') != 0 and not args.nohashes:
+    if S_ISREG(status.st_mode) and fname.find('/proc') != 0 and fname.find('/sys') != 0 and args.hashes:
         try:
             with open(fname, "rb") as f:
                 for block in iter(lambda: f.read(65536), b""):
@@ -97,7 +98,7 @@ def process_item(dirpath,item):
 parser = argparse.ArgumentParser(description='collect data on files')
 parser.add_argument('directories', metavar='DIR', nargs='+', help='directories to traverse')
 parser.add_argument('-m','--prefix', help='prefix string')
-parser.add_argument('-n','--nohashes', action='store_true', help='skip MD5 calculation', default=False)
+parser.add_argument('-5','--hashes', action='store_true', help='do MD5 calculation', default=False)
 parser.add_argument('-V','--version',  action='version', help='print version number',
                     version='%(prog)s v{version}'.format(version= __version__))
 
@@ -107,11 +108,11 @@ for directory in args.directories:
     for dirpath,dirs,files in os.walk(directory):
         for directory in dirs:
             outstr = process_item(dirpath,directory)
-            if len(outstr) > 0:
+            if outstr is not None:
                 print outstr
                 sys.stdout.flush()
         for filename in files:
             outstr = process_item(dirpath,filename)
-            if len(outstr) > 0:
+            if outstr is not None:
                 print outstr
                 sys.stdout.flush()

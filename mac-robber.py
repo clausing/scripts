@@ -22,7 +22,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,7,3)
+__version_info__ = (1,1,0)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -74,15 +74,20 @@ def process_item(dirpath,item):
             status = os.lstat(fname)
         else:
             status = os.stat(fname)
-    except IOerror:
+    except IOError:
         return
-    if S_ISREG(status.st_mode) and fname.find('/proc') != 0 and fname.find('/sys') != 0 and args.hashes:
+    if args.hashes and S_ISREG(status.st_mode):
         try:
-            with open(fname, "rb") as f:
-                for block in iter(lambda: f.read(65536), b""):
-                    md5.update(block)
-            md5str = md5.hexdigest()
-        except IOerror:
+            if (fname.find('/proc') == 0 and fname.endswith('/exe')) or fname.find('/proc') != 0 and status.st_size > 0:
+                with open(fname, "rb") as f:
+                    for block in iter(lambda: f.read(65536), b""):
+                        md5.update(block)
+                md5str = md5.hexdigest()
+            elif status.st_size == 0:
+                md5str = "d41d8cd98f00b204e9800998ecf8427e" 
+            else:
+                md5str = "0"
+        except IOError:
             md5str = "0"
     else:
         md5str = "0"
@@ -112,7 +117,7 @@ parser = argparse.ArgumentParser(description='collect data on files')
 parser.add_argument('directories', metavar='DIR', nargs='+', help='directories to traverse')
 parser.add_argument('-m','--prefix', metavar='PREFIX', help='prefix string')
 parser.add_argument('-5','--hashes', action='store_true', help='do MD5 calculation (disabled by default)', default=False)
-parser.add_argument('-x','--exclude', metavar='EXCLUDE', action='append', help='directory trees or files to exclude, does not handle file extensions or regex')
+parser.add_argument('-x','--exclude', metavar='EXCLUDE', action='append', help='directory trees or files to exclude, does not handle file extensions or regex', default=[])
 parser.add_argument('-r','--rmprefix', metavar='RMPREFIX', help='prefix to remove, useful when using read-only --bind mount to prevent atime updates')
 parser.add_argument('-V','--version',  action='version', help='print version number',
                     version='%(prog)s v{version}'.format(version= __version__))

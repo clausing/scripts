@@ -22,7 +22,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,1,0)
+__version_info__ = (1,1,1)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):
@@ -76,9 +76,11 @@ def process_item(dirpath,item):
             status = os.stat(fname)
     except IOError:
         return
+    except OSError:
+        return
     if args.hashes and S_ISREG(status.st_mode):
         try:
-            if (fname.find('/proc') == 0 and fname.endswith('/exe')) or fname.find('/proc') != 0 and status.st_size > 0:
+            if (fname.find('/proc') != -1 and not fname.endswith('/kcore')) and status.st_size > 0:
                 with open(fname, "rb") as f:
                     for block in iter(lambda: f.read(65536), b""):
                         md5.update(block)
@@ -94,9 +96,9 @@ def process_item(dirpath,item):
     mode = mode_to_string(status.st_mode)
     if os.path.islink(fname) and status.st_size > 0:
         mode = mode + ' -> ' + os.readlink(fname)
-    mtime = status.st_mtime
-    atime = status.st_atime
-    ctime = status.st_mtime
+    mtime = '{:20.9f}'.format(status.st_mtime)
+    atime = '{:20.9f}'.format(status.st_atime)
+    ctime = '{:20.9f}'.format(status.st_mtime)
     btime = 0
     size = status.st_size
     uid = status.st_uid
@@ -110,7 +112,7 @@ def process_item(dirpath,item):
             fname = args.prefix + fname
         else:
             fname = args.prefix + '/' + fname
-    return md5str+'|'+fname+'|'+str(inode)+'|'+mode+'|'+str(uid)+'|'+str(gid)+'|'+str(size)+'|'+str(atime)+'|'+str(mtime)+'|'+str(ctime)+'|'+str(btime)
+    return md5str+'|'+fname+'|'+str(inode)+'|'+mode+'|'+str(uid)+'|'+str(gid)+'|'+str(size)+'|'+atime+'|'+mtime+'|'+ctime+'|'+str(btime)
     
 
 parser = argparse.ArgumentParser(description='collect data on files')

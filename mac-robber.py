@@ -11,7 +11,7 @@
 #
 #   # mount --bind / /mnt
 #   # mount -o ro,remount,bind /mnt
-#   # ./mac-robber.py -5 -x /mnt/mnt -r /mnt -m system-foo:/ /mnt
+#   # ./mac-robber.py -5 -x /mnt/tmp -r /mnt -m system-foo:/ /mnt
 #
 # This gets us hashes, but because the bind mount is read-only doesn't update atimes
 #
@@ -22,7 +22,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,0,7,2)
+__version_info__ = (1,0,7,3)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):

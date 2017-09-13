@@ -6,6 +6,10 @@
 # Unlinke the TSK version, this one can actually includes the MD5 & inode number
 # though I still return a 0 in the MD5 column for non-regular files, but calculating
 # hashes likely will modify atime, so it is turned off by default
+#
+# Note: in Python 2.7.x, st_ino, st_dev, st_nlink, st_uid, and st_gid are dummy variables
+# on Windows systems. This is apparently fixed in current Python 3 versions.
+# On *ALL* systems, os.stat does not return btime, so we put 0 there. :-(
 # 
 # A useful way to use this on a live Linux system is with read-only --bind mounts
 #
@@ -22,7 +26,7 @@ import argparse
 import hashlib
 from stat import *
 
-__version_info__ = (1,1,1)
+__version_info__ = (1,1,1,1)
 __version__ = ".".join(map(str, __version_info__))
 
 def mode_to_string(mode):

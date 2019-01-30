@@ -13,6 +13,9 @@
 #          (v1.3) fix typo
 #          (v1.4) add capability to write to pcap file
 #
+#          Now that there is a version of ngrep that can handle IPv6 on github
+#          this script is no longer maintained
+#
 
 use 5.010;
 

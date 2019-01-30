@@ -1,6 +1,6 @@
 This software is distrbuted under the BSD License
  
-Copyright (c) 2005-2017, Jim Clausing.  All other rights reserved.
+Copyright (c) 2005-2019, Jim Clausing.  All other rights reserved.
  
 Redistribution and use in source and binary forms, with or without modification, are permitted
 provided that the following conditions are met:

@@ -4,19 +4,21 @@
 # Calculate hashes of files
 # 
 # Author: Jim Clausing
-# Date: 2017-04-27
-# Version: 1.4.1
+# Date: 2019-03-12
+# Version: 1.5.0
 
+from __future__ import print_function
 import sys
 import os
 import argparse
-import hashlib
 if sys.version_info < (3, 6):
     import sha3
+import hashlib
 import base64
 import contextlib
+import codecs
 
-__version_info__ = (1,4,1)
+__version_info__ = (1,5,0)
 __version__ = ".".join(map(str, __version_info__))
 
 @contextlib.contextmanager
@@ -45,7 +47,7 @@ def print_header():
         sys.stdout.write('sha3-224|')
     if args.sha3 or args.all:
         sys.stdout.write('sha3-384|')
-    print "filename"
+    print ("filename")
 
 def hash_file(fname):
     global md5, sha1, sha256, sha3_224, sha3, sha512
@@ -73,17 +75,17 @@ def hash_file(fname):
 def print_hashes(fname):
     if hashcnt == 1:
         if args.md5:
-            print md5.hexdigest()+'\t'+fname
+            print (md5.hexdigest()+'\t'+fname)
         elif args.sha1:
-            print sha1.hexdigest()+'\t'+fname
+            print (sha1.hexdigest()+'\t'+fname)
         elif args.sha256:
-            print sha256.hexdigest()+'\t'+fname
+            print (sha256.hexdigest()+'\t'+fname)
         elif args.sha3_224:
-            print sha3_224.hexdigest()+'\t'+fname
+            print (sha3_224.hexdigest()+'\t'+fname)
         elif args.sha3:
-            print sha3.hexdigest()+'\t'+fname
+            print (sha3.hexdigest()+'\t'+fname)
         elif args.sha512:
-            print base64.b64encode(sha512.digest())+'\t'+fname
+            print (codecs.decode(base64.b64encode(sha512.digest()))+'\t'+fname)
     elif args.psv:
         if args.md5 or args.all:
             sys.stdout.write(md5.hexdigest()+'|')
@@ -92,26 +94,26 @@ def print_hashes(fname):
         if args.sha256 or args.all:
             sys.stdout.write(sha256.hexdigest()+'|')
         if args.sha512 or args.all:
-            sys.stdout.write(base64.b64encode(sha512.digest())+'|')
+            sys.stdout.write(codecs.decode(base64.b64encode(sha512.digest()))+'|')
         if args.sha3_224 or args.all:
             sys.stdout.write(sha3_224.hexdigest()+'|')
         if args.sha3 or args.all:
             sys.stdout.write(sha3.hexdigest()+'|')
-        print fname
+        print (fname)
     else:
-        print fname+":"
+        print (fname+":")
         if args.md5 or args.all:
-            print '  MD5:  '+md5.hexdigest()
+            print ('  MD5:  '+md5.hexdigest())
         if args.sha1 or args.all:
-            print '  SHA1: '+sha1.hexdigest()
+            print ('  SHA1: '+sha1.hexdigest())
         if args.sha256 or args.all:
-            print '  SHA256: '+sha256.hexdigest()
+            print ('  SHA256: '+sha256.hexdigest())
         if args.sha512 or args.all:
-            print '  SHA512: '+base64.b64encode(sha512.digest())
+            print ('  SHA512: '+codecs.decode(base64.b64encode(sha512.digest())))
         if args.sha3_224 or args.all:
-            print '  SHA3-224: '+sha3_224.hexdigest()
+            print ('  SHA3-224: '+sha3_224.hexdigest())
         if args.sha3 or args.all:
-            print '  SHA3-384: '+sha3.hexdigest()
+            print ('  SHA3-384: '+sha3.hexdigest())
 
 def count_hashes():
     global hashcnt

@@ -3,13 +3,13 @@
 # Massage plaso l2tcsv output to use ISO-8601(-ish) datetimestamp
 # 
 # Author: Jim Clausing
-# Date: 2019-03-12
-# Version: 0.4.0
+# Date: 2019-10-08
+# Version: 0.4.1
 
+from __future__ import print_function
 import sys
 import argparse
 import fileinput
-from __future__ import print_function
 #import csv
 
 __version_info__ = (0,4,0)

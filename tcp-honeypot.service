@@ -1,0 +1,12 @@
+[Unit]
+Description=tcp-honeypot service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/tcp-honeypot-3.py
+KillMode=process
+Restart=on-failure
+RestartSec=95s
+
+[Install]
+WantedBy=multi-user.target

@@ -3,8 +3,8 @@
 # Massage plaso l2tcsv output to use ISO-8601(-ish) datetimestamp
 # 
 # Author: Jim Clausing
-# Date: 2019-10-08
-# Version: 0.4.1
+# Date: 2020-07-06
+# Version: 0.4.2
 
 from __future__ import print_function
 import sys
@@ -12,7 +12,7 @@ import argparse
 import fileinput
 #import csv
 
-__version_info__ = (0,4,0)
+__version_info__ = (0,4,2)
 __version__ = ".".join(map(str, __version_info__))
 
 

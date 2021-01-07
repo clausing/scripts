@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Rewrite of my perl sigs script in python.
 # Calculate hashes of files
 #
 # Author: Jim Clausing
 # Date: 2021-01-07
-# Version: 1.5.1
+# Version: 1.5.2
 
 from __future__ import print_function
 import sys
@@ -20,7 +20,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 5, 1)
+__version_info__ = (1, 5, 2)
 __version__ = ".".join(map(str, __version_info__))
 
 

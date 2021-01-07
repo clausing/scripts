@@ -4,7 +4,7 @@
 # I figured I'd replace it with a python script
 #
 # Author: Jim Clausing
-# Date: 2019-11-18
+# Date: 2021-01-07
 #
 
 import sys
@@ -16,19 +16,20 @@ import contextlib
 import codecs
 import chardet
 
-__version_info__ = (0,1,0)
+__version_info__ = (0, 1, 1)
 __version__ = ".".join(map(str, __version_info__))
+
 
 @contextlib.contextmanager
 def smart_open(filename=None):
     # KAPE made the TLN file a UTF-16-LE file, this detects that and sets encoding accordingly
-    if filename and filename != '-':
-        fh = open(filename, 'r')
+    if filename and filename != "-":
+        fh = open(filename, "r")
         rawdata = open(filename, "rb").read()
         result = chardet.detect(rawdata)
-        charenc = result['encoding']
+        charenc = result["encoding"]
         fh.close()
-        fh = open(filename, 'r', encoding=charenc)
+        fh = open(filename, "r", encoding=charenc)
     else:
         fh = sys.stdin
 
@@ -38,17 +39,19 @@ def smart_open(filename=None):
         if fh is not sys.stdin:
             fh.close()
 
+
 def parse_line(line):
     line = line.rstrip()
-    i = line.find(',')
-    if (i <= 0):
-        l = line.split('|')
-        l[0] = datetime.utcfromtimestamp(int(l[0])).strftime('%Y-%m-%d %H:%M:%S')
-        print (",".join(l))
+    i = line.find(",")
+    if i <= 0:
+        l = line.split("|")
+        l[0] = datetime.utcfromtimestamp(int(l[0])).strftime("%Y-%m-%d %H:%M:%S")
+        print(",".join(l))
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parse/Transform TLN files')
-    parser.add_argument("files", metavar='FILE', nargs='*', default='-', help='TLN file')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Parse/Transform TLN files")
+    parser.add_argument("files", metavar="FILE", nargs="*", default="-", help="TLN file")
 
     args = parser.parse_args()
 
@@ -57,5 +60,4 @@ if __name__ == '__main__':
             for line in f:
                 parse_line(line)
 
-    
     sys.exit(0)

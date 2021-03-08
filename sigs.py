@@ -5,7 +5,7 @@
 #
 # Author: Jim Clausing
 # Date: 2021-03-08
-# Version: 1.5.3
+# Version: 1.5.4
 
 from __future__ import print_function
 import sys
@@ -20,7 +20,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 5, 3)
+__version_info__ = (1, 5, 4)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -62,71 +62,114 @@ def hash_file(fname):
     sha3 = hashlib.sha3_384()
     sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
-    with smart_open(fname) as f:
-        for block in iter(lambda: f.read(args.block), b""):
-            if args.md5 or args.all:
-                md5.update(block)
-            if args.sha1 or args.all:
-                sha1.update(block)
-            if args.sha256 or args.all:
-                sha256.update(block)
-            if args.sha3_224 or args.all:
-                sha3_224.update(block)
-            if args.sha3 or args.all:
-                sha3.update(block)
-            if args.sha512 or args.all:
-                sha512.update(block)
-
+    if fname != "-" and os.access(fname, os.R_OK):
+        with smart_open(fname) as f:
+            for block in iter(lambda: f.read(args.block), b""):
+                if args.md5 or args.all:
+                    md5.update(block)
+                if args.sha1 or args.all:
+                    sha1.update(block)
+                if args.sha256 or args.all:
+                    sha256.update(block)
+                if args.sha3_224 or args.all:
+                    sha3_224.update(block)
+                if args.sha3 or args.all:
+                    sha3.update(block)
+                if args.sha512 or args.all:
+                    sha512.update(block)
 
 def print_hashes(fname):
-    if hashcnt == 1:
-        if args.md5:
-            print(md5.hexdigest() + "\t" + fname)
-        elif args.sha1:
-            print(sha1.hexdigest() + "\t" + fname)
-        elif args.sha256:
-            print(sha256.hexdigest() + "\t" + fname)
-        elif args.sha3_224:
-            print(sha3_224.hexdigest() + "\t" + fname)
-        elif args.sha3:
-            print(sha3.hexdigest() + "\t" + fname)
-        elif args.sha512:
-            print(codecs.decode(base64.b64encode(sha512.digest())) + "\t" + fname)
-    elif args.psv:
-        if args.md5 or args.all:
-            sys.stdout.write(md5.hexdigest() + "|")
-        if args.sha1 or args.all:
-            sys.stdout.write(sha1.hexdigest() + "|")
-        if args.sha256 or args.all:
-            sys.stdout.write(sha256.hexdigest() + "|")
-        if args.sha512 or args.all:
-            sys.stdout.write(codecs.decode(base64.b64encode(sha512.digest())) + "|")
-        if args.sha3_224 or args.all:
-            sys.stdout.write(sha3_224.hexdigest() + "|")
-        if args.sha3 or args.all:
-            sys.stdout.write(sha3.hexdigest() + "|")
-        print(fname)
+    if fname != "-" and os.access(fname, os.R_OK):
+        if hashcnt == 1:
+            if args.md5:
+                print(md5.hexdigest() + "\t" + fname)
+            elif args.sha1:
+                print(sha1.hexdigest() + "\t" + fname)
+            elif args.sha256:
+                print(sha256.hexdigest() + "\t" + fname)
+            elif args.sha3_224:
+                print(sha3_224.hexdigest() + "\t" + fname)
+            elif args.sha3:
+                print(sha3.hexdigest() + "\t" + fname)
+            elif args.sha512:
+                print(codecs.decode(base64.b64encode(sha512.digest())) + "\t" + fname)
+        elif args.psv:
+            if args.md5 or args.all:
+                sys.stdout.write(md5.hexdigest() + "|")
+            if args.sha1 or args.all:
+                sys.stdout.write(sha1.hexdigest() + "|")
+            if args.sha256 or args.all:
+                sys.stdout.write(sha256.hexdigest() + "|")
+            if args.sha512 or args.all:
+                sys.stdout.write(codecs.decode(base64.b64encode(sha512.digest())) + "|")
+            if args.sha3_224 or args.all:
+                sys.stdout.write(sha3_224.hexdigest() + "|")
+            if args.sha3 or args.all:
+                sys.stdout.write(sha3.hexdigest() + "|")
+            print(fname)
+        else:
+            print(fname + ":")
+            if args.md5 or args.all:
+                print("  MD5:  " + md5.hexdigest())
+            if args.sha1 or args.all:
+                print("  SHA1: " + sha1.hexdigest())
+            if args.sha256 or args.all:
+                print("  SHA256: " + sha256.hexdigest())
+            if args.sha512 or args.all:
+                print("  SHA512: " + codecs.decode(base64.b64encode(sha512.digest())))
+            if args.sha3_224 or args.all:
+                print("  SHA3-224: " + sha3_224.hexdigest())
+            if args.sha3 or args.all:
+                print("  SHA3-384: " + sha3.hexdigest())
     else:
-        print(fname + ":")
-        if args.md5 or args.all:
-            print("  MD5:  " + md5.hexdigest())
-        if args.sha1 or args.all:
-            print("  SHA1: " + sha1.hexdigest())
-        if args.sha256 or args.all:
-            print("  SHA256: " + sha256.hexdigest())
-        if args.sha512 or args.all:
-            print("  SHA512: " + codecs.decode(base64.b64encode(sha512.digest())))
-        if args.sha3_224 or args.all:
-            print("  SHA3-224: " + sha3_224.hexdigest())
-        if args.sha3 or args.all:
-            print("  SHA3-384: " + sha3.hexdigest())
+        if hashcnt == 1:
+            if args.md5:
+                print("(Permission Problem)" + "\t" + fname)
+            elif args.sha1:
+                print("(Permission Problem)" + "\t" + fname)
+            elif args.sha256:
+                print("(Permission Problem)" + "\t" + fname)
+            elif args.sha3_224:
+                print("(Permission Problem)" + "\t" + fname)
+            elif args.sha3:
+                print("(Permission Problem)" + "\t" + fname)
+            elif args.sha512:
+                print("(Permission Problem)" + "\t" + fname)
+        elif args.psv:
+            if args.md5 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            if args.sha1 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            if args.sha256 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            if args.sha512 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            if args.sha3_224 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            if args.sha3 or args.all:
+                sys.stdout.write("(Permission Problem)" + "|")
+            print(fname)
+        else:
+            print(fname + ":")
+            if args.md5 or args.all:
+                print("  MD5:  " + "(Permission Problem)")
+            if args.sha1 or args.all:
+                print("  SHA1: " + "(Permission Problem)")
+            if args.sha256 or args.all:
+                print("  SHA256: " + "(Permission Problem)")
+            if args.sha512 or args.all:
+                print("  SHA512: " + "(Permission Problem)")
+            if args.sha3_224 or args.all:
+                print("  SHA3-224: " + "(Permission Problem)")
+            if args.sha3 or args.all:
+                print("  SHA3-384: " + "(Permission Problem)")
 
 
 def count_hashes():
     global hashcnt
     hashcnt = 0
     if args.all:
-        hashcnt = 5
+        hashcnt = 6
     if args.md5:
         hashcnt += 1
     if args.sha1:

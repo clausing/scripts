@@ -4,8 +4,8 @@
 # Calculate hashes of files
 #
 # Author: Jim Clausing
-# Date: 2021-01-07
-# Version: 1.5.2
+# Date: 2021-03-08
+# Version: 1.5.3
 
 from __future__ import print_function
 import sys
@@ -20,7 +20,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 5, 2)
+__version_info__ = (1, 5, 3)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -132,8 +132,6 @@ def count_hashes():
     if args.sha1:
         hashcnt += 1
     if args.sha256:
-        hashcnt += 1
-    if args.sha3_224:
         hashcnt += 1
     if args.sha3:
         hashcnt += 1

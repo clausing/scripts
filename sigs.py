@@ -4,12 +4,13 @@
 # Calculate hashes of files
 #
 # Author: Jim Clausing
-# Date: 2021-03-08
-# Version: 1.5.4
+# Date: 2024-03-24
+# Version: 1.6.0
 
 from __future__ import print_function
 import sys
 import os
+import io
 import argparse
 
 if sys.version_info < (3, 6):
@@ -20,7 +21,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 5, 4)
+__version_info__ = (1, 6, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -29,7 +30,7 @@ def smart_open(filename=None):
     if filename and filename != "-":
         fh = open(filename, "rb")
     else:
-        fh = sys.stdin
+        fh = sys.stdin.buffer
 
     try:
         yield fh
@@ -62,7 +63,7 @@ def hash_file(fname):
     sha3 = hashlib.sha3_384()
     sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
-    if fname != "-" and os.access(fname, os.R_OK):
+    if fname == "-" or os.access(fname, os.R_OK):
         with smart_open(fname) as f:
             for block in iter(lambda: f.read(args.block), b""):
                 if args.md5 or args.all:
@@ -79,20 +80,20 @@ def hash_file(fname):
                     sha512.update(block)
 
 def print_hashes(fname):
-    if fname != "-" and os.access(fname, os.R_OK):
+    if fname == "-" or os.access(fname, os.R_OK):
         if hashcnt == 1:
             if args.md5:
-                print(md5.hexdigest() + "\t" + fname)
+                print(md5.hexdigest() + "\t" + (fname if fname != "-" else ""))
             elif args.sha1:
-                print(sha1.hexdigest() + "\t" + fname)
+                print(sha1.hexdigest() + "\t" + (fname if fname != "-" else ""))
             elif args.sha256:
-                print(sha256.hexdigest() + "\t" + fname)
-            elif args.sha3_224:
-                print(sha3_224.hexdigest() + "\t" + fname)
-            elif args.sha3:
-                print(sha3.hexdigest() + "\t" + fname)
+                print(sha256.hexdigest() + "\t" + (fname if fname != "-" else ""))
             elif args.sha512:
-                print(codecs.decode(base64.b64encode(sha512.digest())) + "\t" + fname)
+                print(codecs.decode(base64.b64encode(sha512.digest())) + "\t" + (fname if fname != "-" else ""))
+            elif args.sha3_224:
+                print(sha3_224.hexdigest() + "\t" + (fname if fname != "-" else ""))
+            elif args.sha3:
+                print(sha3.hexdigest() + "\t" + (fname if fname != "-" else ""))
         elif args.psv:
             if args.md5 or args.all:
                 sys.stdout.write(md5.hexdigest() + "|")
@@ -108,7 +109,8 @@ def print_hashes(fname):
                 sys.stdout.write(sha3.hexdigest() + "|")
             print(fname)
         else:
-            print(fname + ":")
+            if fname != "-":
+                print(fname + ":")
             if args.md5 or args.all:
                 print("  MD5:  " + md5.hexdigest())
             if args.sha1 or args.all:
@@ -129,11 +131,11 @@ def print_hashes(fname):
                 print("(Permission Problem)" + "\t" + fname)
             elif args.sha256:
                 print("(Permission Problem)" + "\t" + fname)
+            elif args.sha512:
+                print("(Permission Problem)" + "\t" + fname)
             elif args.sha3_224:
                 print("(Permission Problem)" + "\t" + fname)
             elif args.sha3:
-                print("(Permission Problem)" + "\t" + fname)
-            elif args.sha512:
                 print("(Permission Problem)" + "\t" + fname)
         elif args.psv:
             if args.md5 or args.all:

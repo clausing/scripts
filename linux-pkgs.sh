@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Name: redhat-pkgs.sh
+# Name: linux-pkgs.sh
 # Desc: Enumerate installed packages on a RHEL/CentOS/Fedora/Debian/Ubuntu system
 #
 # Author: Jim Clausing

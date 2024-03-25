@@ -16,7 +16,10 @@ while getopts "h?p:" opt; do
                 p) PREFIX="$OPTARG"
                         ;;
                 h|\?)
-                        echo "Usage: $(basename $0) [-p path/prefix]"
+                        echo "Usage: $(basename $0) [-p path/prefix] 
+	
+	-p path/prefix		mount point for the image (default will look at running system)
+"
                         exit 0
                         ;;
         esac

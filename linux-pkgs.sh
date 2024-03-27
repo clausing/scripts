@@ -32,6 +32,8 @@ elif [ -d var/lib/yum/yumdb ] ; then
 	for i in var/lib/yum/yumdb/*/* ; do basename $i | cut -d\- -f2- ; done
 elif [ -d var/lib/dpkg ] ; then
 	egrep '^(Package:|Version:)' var/lib/dpkg/status | awk '{print $2}' | while read a ; do read b ; echo "$a-$b" ; done
+elif [ -d var/lib/rpm ] ; then
+        rpm -q -a 
 else
 	echo "I don't recognize this distro"
 	echo "I currently only handle distros that use dpkg/apt, yum, or dnf"

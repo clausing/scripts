@@ -4,8 +4,8 @@
 # Calculate hashes of files
 #
 # Author: Jim Clausing
-# Date: 2024-03-24
-# Version: 1.6.0
+# Date: 2025-02-16
+# Version: 1.7.0
 
 from __future__ import print_function
 import sys
@@ -23,7 +23,6 @@ import codecs
 
 __version_info__ = (1, 6, 0)
 __version__ = ".".join(map(str, __version_info__))
-
 
 @contextlib.contextmanager
 def smart_open(filename=None):
@@ -54,7 +53,6 @@ def print_header():
         sys.stdout.write("sha3-384|")
     print("filename")
 
-
 def hash_file(fname):
     global md5, sha1, sha256, sha3_224, sha3, sha512
     md5 = hashlib.md5()
@@ -63,7 +61,7 @@ def hash_file(fname):
     sha3 = hashlib.sha3_384()
     sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
-    if fname == "-" or os.access(fname, os.R_OK):
+    if fname == "-" or os.access(str(fname), os.R_OK):
         with smart_open(fname) as f:
             for block in iter(lambda: f.read(args.block), b""):
                 if args.md5 or args.all:
@@ -80,20 +78,20 @@ def hash_file(fname):
                     sha512.update(block)
 
 def print_hashes(fname):
-    if fname == "-" or os.access(fname, os.R_OK):
+    if fname == "-" or os.access(str(fname), os.R_OK):
         if hashcnt == 1:
             if args.md5:
-                print(md5.hexdigest() + "\t" + (fname if fname != "-" else ""))
+                print(md5.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha1:
-                print(sha1.hexdigest() + "\t" + (fname if fname != "-" else ""))
+                print(sha1.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha256:
-                print(sha256.hexdigest() + "\t" + (fname if fname != "-" else ""))
+                print(sha256.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha512:
-                print(codecs.decode(base64.b64encode(sha512.digest())) + "\t" + (fname if fname != "-" else ""))
+                print(codecs.decode(base64.b64encode(sha512.digest())) + "  " + (fname if fname != "-" else ""))
             elif args.sha3_224:
-                print(sha3_224.hexdigest() + "\t" + (fname if fname != "-" else ""))
+                print(sha3_224.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha3:
-                print(sha3.hexdigest() + "\t" + (fname if fname != "-" else ""))
+                print(sha3.hexdigest() + "  " + (fname if fname != "-" else ""))
         elif args.psv:
             if args.md5 or args.all:
                 sys.stdout.write(md5.hexdigest() + "|")
@@ -126,17 +124,17 @@ def print_hashes(fname):
     else:
         if hashcnt == 1:
             if args.md5:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
             elif args.sha1:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
             elif args.sha256:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
             elif args.sha512:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
             elif args.sha3_224:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
             elif args.sha3:
-                print("(Permission Problem)" + "\t" + fname)
+                print("(Permission Problem)" + "  " + fname)
         elif args.psv:
             if args.md5 or args.all:
                 sys.stdout.write("(Permission Problem)" + "|")
@@ -166,7 +164,6 @@ def print_hashes(fname):
             if args.sha3 or args.all:
                 print("  SHA3-384: " + "(Permission Problem)")
 
-
 def count_hashes():
     global hashcnt
     hashcnt = 0
@@ -184,6 +181,73 @@ def count_hashes():
         hashcnt += 1
     if args.sha512:
         hashcnt += 1
+
+def check_hashes():
+    failures = 0
+    for path in args.files:
+        if os.path.isfile(path) or path == "-":
+            with smart_open(path) as f:
+                for line in f:
+                    line = line.decode('utf-8')
+                    line = line.strip('\n')
+                    parts = str(line).split("  ")
+                    if len(parts[0]) == 32:
+                        args.md5 = True
+                    elif len(parts[0]) == 40:
+                        args.sha1 = True
+                    elif len(parts[0]) == 64:
+                        args.sha256 = True
+                    elif len(parts[0]) == 96:
+                        args.sha3 = True
+                    elif len(parts[0]) == 56:
+                        args.sha3_224 = True
+                    elif len(parts[0]) == 88:
+                        args.sha512 = True
+                    count_hashes()
+                    if os.path.isfile(parts[1]):
+                        hash_file(parts[1])
+                    else:
+                        print(parts[1], ": File not found")
+                        break
+                    if len(parts[0]) == 32:
+                        if args.md5 and (parts[0] == md5.hexdigest()):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+                    if len(parts[0]) == 40:
+                        if args.sha1 and (parts[0] == sha1.hexdigest()):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+                    if len(parts[0]) == 64:
+                        if args.sha256 and (parts[0] == sha256.hexdigest()):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+                    if len(parts[0]) == 96:
+                        if args.sha3 and (parts[0] == sha3.hexdigest()):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+                    if len(parts[0]) == 56:
+                        if args.sha3_224 and (parts[0] == sha3_224.hexdigest()):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+                    if len(parts[0]) == 88:
+                        if args.sha512 and (parts[0] == codecs.decode(base64.b64encode(sha512.digest()))):
+                            print (parts[1] + ": OK")
+                        else:
+                            print (parts[1] + ": FAILED")
+                            failures += 1
+    if failures > 0:
+        print (sys.argv[0] + ": WARNING: " + str(failures) + " checksums did not match")
+        sys.exit(255)
 
 
 if __name__ == "__main__":
@@ -218,17 +282,26 @@ if __name__ == "__main__":
     )
     parser.add_argument("-f", "--fullpath", action="store_true", help="print full path rather than relative")
     parser.add_argument(
-        "-b", "--block", metavar="blk", type=int, default=65536, help="block size to read file, default = 65536"
+        "-B", "--block", metavar="blk", type=int, default=65536, help="block size to read file, default = 65536"
     )
+    parser.add_argument("-c", "--check", action="store_true", help="read sums from FILE and check them")
+    #parser.add_argument("-b", "--base", action="store_true", help="match only basename, only valid with -c")
     parser.add_argument("-p", "--psv", action="store_true", help="write output as pipe separated values")
     args = parser.parse_args()
 
     # if any hash switches are specified turn -a off
-    if args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512:
+    if args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512 or args.check:
         args.all = False
+    #if args.base and not args.check:
+    #    print("-b not valid without -c")
+    #    sys.exit(255)
 
     if args.psv:
         print_header()
+
+    if args.check:
+        check_hashes()
+        sys.exit(0)
 
     # count whether a non-zero number of hashes are specified (affects output format)
     count_hashes()

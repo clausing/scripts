@@ -21,7 +21,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 6, 0)
+__version_info__ = (1, 7, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 @contextlib.contextmanager

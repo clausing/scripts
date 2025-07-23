@@ -1,0 +1,5 @@
+# /etc/cron.d/anacron: crontab entries for the anacron package
+
+SHELL=/bin/sh
+
+30 */2 * * *   root	[ -x /usr/bin/ficheck.py ] && /usr/local/bin/ficheck.py -ru

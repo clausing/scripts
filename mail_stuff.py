@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-'''
+"""
 	Name: mail_stuff.py
     Author: Jim Clausing <jclausing@isc.sans.edu>
-    Version: 1.0.0
+    Version: 1.0.1
     Desc:   A script to send e-mail if there is any text fed to the script
             It can take several arguments -s for subject and -u if the body is UTF-8
             and -V for version info
-'''
+"""
 
 import argparse
 import subprocess
 import sys
 
-__version_info__ = (1, 0, 0)
+__version_info__ = (1, 0, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 def main():
@@ -26,11 +26,11 @@ def main():
     args = parser.parse_args()
 
     if not args.recipients:
-        sys.exit(11)  # match the Perl script behavior if no recipient is given
+        sys.exit(11)  
 
     msg = sys.stdin.read()
     if not msg.strip():
-        return  # No message; equivalent to `if (#msg != -1)` in Perl
+        return  # No message exit silently
 
     cmd = ['/usr/bin/mailx']
     

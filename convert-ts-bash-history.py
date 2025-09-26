@@ -4,7 +4,7 @@
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
     Date: 2025-09-26
-    Version: 0.9.0
+    Version: 0.9.1
 
     This script takes 1 or more filenames of .bash_history files
     and returns a | separated list with 
@@ -18,7 +18,7 @@
 
 __description__ = ('Program to convert .bash_history files to | separated list with ISO-8601 timestamps')
 __author__ = 'Jim Clausing'
-__version__ = '0.9.0'
+__version__ = '0.9.1'
 __date__ = '2025-09-26'
 
 import argparse
@@ -50,7 +50,7 @@ def parse_bash_history(filename):
     return results
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(usage='usage: ' + os.path.basename(__file__) + ' FILENAME [FILENAME ...]\n' + __description__)
+    parser = argparse.ArgumentParser(usage=' ' + os.path.basename(__file__) + ' FILENAME [FILENAME ...]\n' + __description__)
     parser.add_argument('filenames', metavar='FILENAME', nargs='+',
                         help='path to .bash_history file(s) to convert')
     parser.add_argument('-V', '--version', action='version', help='print version number',

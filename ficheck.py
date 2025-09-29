@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2025-07-22
-    Version: 0.9.0
+    Date: 2025-09-28
+    Version: 0.9.1
 
     Perform file integrity check on Unix/Linux systems
 
@@ -51,7 +51,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     have_statx = True
 
-__version_info__ = (0, 9, 0)
+__version_info__ = (0, 9, 1)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"
@@ -419,7 +419,7 @@ def parse_config_file(config_file):
     with open(config_file, 'r', encoding='utf8') as file:
         for line in file:
             line = line.strip()
-            if not line or '=' not in line:
+            if not line or '=' not in line or line[0] == '#':
                 continue
             key, value = map(str.strip, line.split('=', 1))
             if key.lower() == 'directory':

@@ -4,8 +4,8 @@
 # Calculate hashes of files
 #
 # Author: Jim Clausing
-# Date: 2025-02-16
-# Version: 1.7.0
+# Date: 2025-10-07
+# Version: 1.7.1
 
 from __future__ import print_function
 import sys
@@ -21,7 +21,7 @@ import base64
 import contextlib
 import codecs
 
-__version_info__ = (1, 7, 0)
+__version_info__ = (1, 7, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 @contextlib.contextmanager
@@ -52,6 +52,7 @@ def print_header():
     if args.sha3 or args.all:
         sys.stdout.write("sha3-384|")
     print("filename")
+    sys.stdout.flush()
 
 def hash_file(fname):
     global md5, sha1, sha256, sha3_224, sha3, sha512
@@ -164,6 +165,8 @@ def print_hashes(fname):
             if args.sha3 or args.all:
                 print("  SHA3-384: " + "(Permission Problem)")
 
+    sys.stdout.flush()
+
 def count_hashes():
     global hashcnt
     hashcnt = 0
@@ -245,6 +248,7 @@ def check_hashes():
                         else:
                             print (parts[1] + ": FAILED")
                             failures += 1
+        sys.stdout.flush()
     if failures > 0:
         print (sys.argv[0] + ": WARNING: " + str(failures) + " checksums did not match")
         sys.exit(255)

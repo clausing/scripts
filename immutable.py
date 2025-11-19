@@ -20,7 +20,8 @@ def check_lsattr_exists():
 def is_immutable(file_path):
     try:
         # Run the lsattr command and capture the output
-        result = subprocess.run(['lsattr', file_path], capture_output=True, text=True, check=True)
+        lsattr = shutil.which('lsattr')
+        result = subprocess.run([lsattr, file_path], capture_output=True, text=True, check=True)
         # The immutable attribute is represented by an 'i'
         return 'i' in result.stdout.split()[0]
     except subprocess.CalledProcessError:

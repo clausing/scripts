@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Calculate MD5, SHA1, SHA256, SHA512, SHA3-224, and SHA3-384 hashes of files."""
 #
 # Rewrite of my perl sigs script in python.
 # Calculate hashes of files
@@ -10,24 +11,26 @@
 from __future__ import print_function
 import sys
 import os
-import io
 import argparse
-
-if sys.version_info < (3, 6):
-    import sha3
-
 import hashlib
 import base64
 import contextlib
 import codecs
 
+if sys.version_info < (3, 6):
+    import sha3  # pylint: disable=import-error
+
 __version_info__ = (1, 7, 1)
 __version__ = ".".join(map(str, __version_info__))
 
+md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name
+
+
 @contextlib.contextmanager
-def smart_open(filename=None):
-    if filename and filename != "-":
-        fh = open(filename, "rb")
+def smart_open(filepath=None):
+    """Open a file for binary reading, or yield stdin.buffer if no path given."""
+    if filepath and filepath != "-":
+        fh = open(filepath, "rb")
     else:
         fh = sys.stdin.buffer
 
@@ -39,6 +42,7 @@ def smart_open(filename=None):
 
 
 def print_header():
+    """Print PSV column headers for selected hash types."""
     if args.md5 or args.all:
         sys.stdout.write("md5|")
     if args.sha1 or args.all:
@@ -54,8 +58,9 @@ def print_header():
     print("filename")
     sys.stdout.flush()
 
-def hash_file(fname):
-    global md5, sha1, sha256, sha3_224, sha3, sha512
+def hash_file(fname):  # pylint: disable=redefined-outer-name
+    """Compute selected hashes for the given file path (or '-' for stdin)."""
+    global md5, sha1, sha256, sha3_224, sha3, sha512  # pylint: disable=global-statement
     md5 = hashlib.md5()
     sha1 = hashlib.sha1()
     sha256 = hashlib.sha256()
@@ -78,7 +83,8 @@ def hash_file(fname):
                 if args.sha512 or args.all:
                     sha512.update(block)
 
-def print_hashes(fname):
+def print_hashes(fname):  # pylint: disable=redefined-outer-name,too-many-branches,too-many-statements
+    """Print computed hashes for fname in the selected output format."""
     if fname == "-" or os.access(str(fname), os.R_OK):
         if hashcnt == 1:
             if args.md5:
@@ -88,7 +94,10 @@ def print_hashes(fname):
             elif args.sha256:
                 print(sha256.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha512:
-                print(codecs.decode(base64.b64encode(sha512.digest())) + "  " + (fname if fname != "-" else ""))
+                print(
+                    codecs.decode(base64.b64encode(sha512.digest()))
+                    + "  " + (fname if fname != "-" else "")
+                )
             elif args.sha3_224:
                 print(sha3_224.hexdigest() + "  " + (fname if fname != "-" else ""))
             elif args.sha3:
@@ -168,7 +177,8 @@ def print_hashes(fname):
     sys.stdout.flush()
 
 def count_hashes():
-    global hashcnt
+    """Count how many hash types are selected and store in global hashcnt."""
+    global hashcnt  # pylint: disable=global-statement
     hashcnt = 0
     if args.all:
         hashcnt = 6
@@ -185,11 +195,12 @@ def count_hashes():
     if args.sha512:
         hashcnt += 1
 
-def check_hashes():
+def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
+    """Read hash-file(s) from args.files and verify each listed file."""
     failures = 0
-    for path in args.files:
-        if os.path.isfile(path) or path == "-":
-            with smart_open(path) as f:
+    for fpath in args.files:
+        if os.path.isfile(fpath) or fpath == "-":
+            with smart_open(fpath) as f:
                 for line in f:
                     line = line.decode('utf-8')
                     line = line.strip('\n')
@@ -243,7 +254,8 @@ def check_hashes():
                             print (parts[1] + ": FAILED")
                             failures += 1
                     if len(parts[0]) == 88:
-                        if args.sha512 and (parts[0] == codecs.decode(base64.b64encode(sha512.digest()))):
+                        sha512_b64 = codecs.decode(base64.b64encode(sha512.digest()))
+                        if args.sha512 and (parts[0] == sha512_b64):
                             print (parts[1] + ": OK")
                         else:
                             print (parts[1] + ": FAILED")
@@ -259,10 +271,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate hashes")
     parser.add_argument("files", metavar="FILE", nargs="*", default="-", help="files to hash")
     parser.add_argument(
-        "-V", "--version", action="version", help="print version number", version="%(prog)s v" + __version__
+        "-V", "--version", action="version",
+        help="print version number", version="%(prog)s v" + __version__
     )
     parser.add_argument(
-        "-r", "--recursive", action="store_true", help="recursive mode. All subdirectories are traversed"
+        "-r", "--recursive", action="store_true",
+        help="recursive mode. All subdirectories are traversed"
     )
     parser.add_argument(
         "-a",
@@ -271,10 +285,15 @@ if __name__ == "__main__":
         help="All (MD5, SHA1, SHA256, SHA512, and SHA3-384), default if no other options chosen",
         default="true",
     )
-    parser.add_argument("-m", "--md5", action="store_true", help="MD5 signature (md5sum equivalent output)")
-    parser.add_argument("-s", "--sha1", action="store_true", help="SHA1 signature (sha1sum equivalent output)")
     parser.add_argument(
-        "-2", "--sha256", action="store_true", help="SHA2 (aka SHA2-256) signature (sha256sum equivalent output)"
+        "-m", "--md5", action="store_true", help="MD5 signature (md5sum equivalent output)"
+    )
+    parser.add_argument(
+        "-s", "--sha1", action="store_true", help="SHA1 signature (sha1sum equivalent output)"
+    )
+    parser.add_argument(
+        "-2", "--sha256", action="store_true",
+        help="SHA2 (aka SHA2-256) signature (sha256sum equivalent output)"
     )
     parser.add_argument("-3", "--sha3", action="store_true", help="SHA3-384 signature")
     parser.add_argument("-t", "--sha3_224", action="store_true", help="SHA3-224 signature")
@@ -284,17 +303,26 @@ if __name__ == "__main__":
         action="store_true",
         help="SHA512 (aka SHA2-512) signature (note: base64 encoded rather than hex)",
     )
-    parser.add_argument("-f", "--fullpath", action="store_true", help="print full path rather than relative")
     parser.add_argument(
-        "-B", "--block", metavar="blk", type=int, default=65536, help="block size to read file, default = 65536"
+        "-f", "--fullpath", action="store_true", help="print full path rather than relative"
     )
-    parser.add_argument("-c", "--check", action="store_true", help="read sums from FILE and check them")
-    #parser.add_argument("-b", "--base", action="store_true", help="match only basename, only valid with -c")
-    parser.add_argument("-p", "--psv", action="store_true", help="write output as pipe separated values")
+    parser.add_argument(
+        "-B", "--block", metavar="blk", type=int, default=65536,
+        help="block size to read file, default = 65536"
+    )
+    parser.add_argument(
+        "-c", "--check", action="store_true", help="read sums from FILE and check them"
+    )
+    #parser.add_argument("-b", "--base", action="store_true",
+    #                    help="match only basename, only valid with -c")
+    parser.add_argument(
+        "-p", "--psv", action="store_true", help="write output as pipe separated values"
+    )
     args = parser.parse_args()
 
     # if any hash switches are specified turn -a off
-    if args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512 or args.check:
+    any_hash = args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512
+    if any_hash or args.check:
         args.all = False
     #if args.base and not args.check:
     #    print("-b not valid without -c")

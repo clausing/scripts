@@ -43,16 +43,23 @@ def parse_bash_history(filename):
         else:
             if timestamp is not None:
                 iso_time = datetime.fromtimestamp(timestamp).isoformat()
-                results.append(f"{filename}|{iso_time}|{line}")
+                if args.nofilename:
+                    results.append(f"{iso_time}|{line}")
+                else:
+                    results.append(f"{filename}|{iso_time}|{line}")
                 timestamp = None
             else:
-                results.append(f"{filename}|NA|{line}")
+                if args.nofilename:
+                    results.append(f"NA|{line}")
+                else:
+                    results.append(f"{filename}|NA|{line}")
     return results
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage=' ' + os.path.basename(__file__) + ' FILENAME [FILENAME ...]\n' + __description__)
     parser.add_argument('filenames', metavar='FILENAME', nargs='+',
                         help='path to .bash_history file(s) to convert')
+    parser.add_argument('-f', '--nofilename', action="store_true", help='suppress filename output')
     parser.add_argument('-V', '--version', action='version', help='print version number',
                         version='%(prog)s v' + __version__)
     args = parser.parse_args()

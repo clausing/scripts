@@ -431,7 +431,9 @@ def parse_config_file(config_file):
 
 def move_file(file1, file2):
     """If update switch passed, move new db into old db location"""
-
+    if os.path.islink(file2):
+        print(f"Error: {file2} is a symlink — aborting", file=sys.stderr)
+        sys.exit(1)
     parts = os.path.split(file1)
     Path(parts[0]).mkdir(parents=True, exist_ok=True)
     if os.path.isfile(file1):
@@ -491,9 +493,11 @@ if __name__ == "__main__":
         skip_paths.extend(['/proc/','/sys/'])
 
     if args.report:
-        report = open(report_file_path, 'w', encoding='utf')
+        fd = os.open(report_file_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        report = os.fdopen(fd, 'w', encoding='utf-8')
 
-    with open(new_db_file_path, 'w+', newline='', encoding='utf8') as db:
+    fd = os.open(new_db_file_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w+', newline='', encoding='utf-8') as db:
         writer = csv.writer(db, delimiter='&')
     with open(new_db_file_path, "a", encoding='utf8') as db:
         if os.name == "posix":

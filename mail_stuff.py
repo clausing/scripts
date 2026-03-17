@@ -40,9 +40,13 @@ def main():
 
     # Add subject if provided
     if args.s:
-        cmd.extend(['-s', args.s])
+        cmd.extend(['-s', args.s.replace('\r', '').replace('\n', ' ')])
 
     # Add recipients
+    for r in args.recipients:
+        if r.startswith('-'):
+            print(f"Invalid recipient: {r}", file=sys.stderr)
+            sys.exit(1)
     cmd.extend(args.recipients)
 
     # Send the message

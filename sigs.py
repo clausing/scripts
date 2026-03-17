@@ -5,8 +5,8 @@
 # Calculate hashes of files
 #
 # Author: Jim Clausing
-# Date: 2025-10-07
-# Version: 1.7.1
+# Date: 2026-03-17
+# Version: 1.8.0
 
 from __future__ import print_function
 import sys
@@ -20,7 +20,7 @@ import codecs
 if sys.version_info < (3, 6):
     import sha3  # pylint: disable=import-error
 
-__version_info__ = (1, 7, 1)
+__version_info__ = (1, 8, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name

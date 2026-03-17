@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2025-09-26
-    Version: 0.9.1
+    Date: 2026-03-17
+    Version: 1.0.0
 
     This script takes 1 or more filenames of .bash_history files
     and returns a | separated list with 
@@ -18,8 +18,8 @@
 
 __description__ = ('Program to convert .bash_history files to | separated list with ISO-8601 timestamps')
 __author__ = 'Jim Clausing'
-__version__ = '0.9.1'
-__date__ = '2025-09-26'
+__version__ = '1.0.0'
+__date__ = '2026-03-17'
 
 import argparse
 import sys

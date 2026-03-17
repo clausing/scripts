@@ -28,7 +28,7 @@ import os
 from datetime import datetime
 
 def parse_bash_history(filename):
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8', errors='replace') as f:
         lines = f.readlines()
     
     results = []
@@ -64,5 +64,8 @@ if __name__ == '__main__':
                         version='%(prog)s v' + __version__)
     args = parser.parse_args()
     for filename in args.filenames:
-        for entry in parse_bash_history(filename):
-            print(entry)
+        try:
+            for entry in parse_bash_history(filename):
+                print(entry)
+        except (FileNotFoundError, PermissionError) as e:
+            print(f"Error: {e}", file=sys.stderr)

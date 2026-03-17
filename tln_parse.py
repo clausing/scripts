@@ -24,11 +24,10 @@ __version__ = ".".join(map(str, __version_info__))
 def smart_open(filename=None):
     # KAPE made the TLN file a UTF-16-LE file, this detects that and sets encoding accordingly
     if filename and filename != "-":
-        fh = open(filename, "r")
-        rawdata = open(filename, "rb").read()
+        with open(filename, "rb") as raw_fh:
+            rawdata = raw_fh.read()
         result = chardet.detect(rawdata)
-        charenc = result["encoding"]
-        fh.close()
+        charenc = result.get("encoding") or "utf-8"
         fh = open(filename, "r", encoding=charenc)
     else:
         fh = sys.stdin

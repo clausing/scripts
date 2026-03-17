@@ -24,8 +24,9 @@ def is_immutable(file_path):
         result = subprocess.run([lsattr, file_path], capture_output=True, text=True, check=True)
         # The immutable attribute is represented by an 'i'
         return 'i' in result.stdout.split()[0]
-    except subprocess.CalledProcessError:
-        # If lsattr fails, we assume the file is not immutable
+    except subprocess.CalledProcessError as e:
+        if e.returncode != 1:
+            print(f"Warning: lsattr failed for {file_path}: {e}", file=sys.stderr)
         return False
 
 def search_immutable_files(directory, recursive, follow_symlinks):

@@ -67,7 +67,7 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name
     sha3 = hashlib.sha3_384()
     sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
-    if fname == "-" or os.access(str(fname), os.R_OK):
+    try:
         with smart_open(fname) as f:
             for block in iter(lambda: f.read(args.block), b""):
                 if args.md5 or args.all:
@@ -82,10 +82,13 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name
                     sha3.update(block)
                 if args.sha512 or args.all:
                     sha512.update(block)
+    except (IOError, PermissionError):
+        return False
+    return True
 
-def print_hashes(fname):  # pylint: disable=redefined-outer-name,too-many-branches,too-many-statements
+def print_hashes(fname, readable=True):  # pylint: disable=redefined-outer-name,too-many-branches,too-many-statements
     """Print computed hashes for fname in the selected output format."""
-    if fname == "-" or os.access(str(fname), os.R_OK):
+    if fname == "-" or readable:
         if hashcnt == 1:
             if args.md5:
                 print(md5.hexdigest() + "  " + (fname if fname != "-" else ""))
@@ -205,6 +208,12 @@ def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
                     line = line.decode('utf-8')
                     line = line.strip('\n')
                     parts = str(line).split("  ")
+                    if len(parts) < 2 or not parts[1].strip():
+                        continue
+                    # Algorithm is inferred from digest length. Lengths are
+                    # unambiguous within the set supported by this script:
+                    # SHA3-224 (56) and SHA3-384 (96) are the only SHA3
+                    # variants supported; SHA3-256/SHA3-512 are not.
                     if len(parts[0]) == 32:
                         args.md5 = True
                     elif len(parts[0]) == 40:
@@ -347,11 +356,11 @@ if __name__ == "__main__":
                 for filename in filenames:
                     fname = os.path.join(root, filename)
                     if os.path.isfile(fname):
-                        hash_file(fname)
-                        print_hashes(fname)
+                        readable = hash_file(fname)
+                        print_hashes(fname, readable)
         else:
             if os.path.isfile(path) or path == "-":
-                hash_file(path)
-                print_hashes(path)
+                readable = hash_file(path)
+                print_hashes(path, readable)
 
     sys.exit(0)

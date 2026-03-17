@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2025-09-28
-    Version: 0.9.2
+    Date: 2026-03-17
+    Version: 1.0.0
 
     Perform file integrity check on Unix/Linux systems
 
@@ -51,7 +51,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     have_statx = True
 
-__version_info__ = (0, 9, 2)
+__version_info__ = (1, 0, 0)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"

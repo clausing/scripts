@@ -9,7 +9,7 @@ import argparse
 import shutil
 import sys
 
-__version_info__ = (0, 1, 0)
+__version_info__ = (0, 2, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 def check_lsattr_exists():
@@ -53,6 +53,8 @@ def main():
     parser.add_argument('-r', '--recursive', action='store_true', help='Recursively search directories')
     parser.add_argument('-f', '--fullpath', action='store_true', help='Print full path rather than relative')
     parser.add_argument('-l', '--follow-symlinks', action='store_true', help='Follow symbolic links')
+    parser.add_argument('-V', '--version', action='version', help='print version number',
+                        version='%(prog)s v' + __version__)
     args = parser.parse_args()
 
     immutable_files = []

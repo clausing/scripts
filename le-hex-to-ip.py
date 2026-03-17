@@ -3,8 +3,9 @@
 __description__ = ('Program to convert little-endian hex (as found in /proc/<pid>/net/tcp[6], etc.) to IPv4 or IPv6 '
                    'addresses')
 __author__ = 'Jim Clausing'
-__version__ = '1.3.1'
-__date__ = '2024-10-07'
+__version_info__ = (1, 4, 0)
+__version__ = ".".join(map(str, __version_info__))
+__date__ = '2026-03-17'
 
 import argparse
 import os

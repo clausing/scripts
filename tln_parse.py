@@ -4,7 +4,7 @@
 # I figured I'd replace it with a python script
 #
 # Author: Jim Clausing
-# Date: 2021-01-07
+# Date: 2026-03-17
 #
 
 import sys
@@ -16,7 +16,7 @@ import contextlib
 import codecs
 import chardet
 
-__version_info__ = (0, 1, 1)
+__version_info__ = (0, 2, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -51,6 +51,8 @@ def parse_line(line):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parse/Transform TLN files")
     parser.add_argument("files", metavar="FILE", nargs="*", default="-", help="TLN file")
+    parser.add_argument('-V', '--version', action='version', help='print version number',
+                        version='%(prog)s v' + __version__)
 
     args = parser.parse_args()
 

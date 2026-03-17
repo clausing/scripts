@@ -2,7 +2,7 @@
 """
 	Name: mail_stuff.py
     Author: Jim Clausing <jclausing@isc.sans.edu>
-    Version: 1.0.1
+    Version: 1.1.0
     Desc:   A script to send e-mail if there is any text fed to the script
             It can take several arguments -s for subject and -u if the body is UTF-8
             and -V for version info
@@ -12,7 +12,7 @@ import argparse
 import subprocess
 import sys
 
-__version_info__ = (1, 0, 1)
+__version_info__ = (1, 1, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 def main():

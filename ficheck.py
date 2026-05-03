@@ -51,7 +51,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     have_statx = True
 
-__version_info__ = (1, 0, 1)
+__version_info__ = (1, 0, 2)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"
@@ -59,8 +59,10 @@ report_file_path = "/run/ficheck.txt"
 changes = 0
 total_changes = 0
 hostname = socket.gethostname()
+args = None
+report = None
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments,line-too-long
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments,line-too-long,too-many-nested-blocks
 def write_file(filepath, inode, perms, links, uid, gid, size, ctime, mtime, btime, file_hash):
     """Write entry to new db file"""
 

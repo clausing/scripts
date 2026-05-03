@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2026-03-17
-    Version: 1.0.0
+    Date: 2026-05-03
+    Version: 1.0.1
 
     Perform file integrity check on Unix/Linux systems
 
@@ -51,7 +51,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     have_statx = True
 
-__version_info__ = (1, 0, 0)
+__version_info__ = (1, 0, 1)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"
@@ -493,8 +493,8 @@ if __name__ == "__main__":
         skip_paths.extend(['/proc/','/sys/'])
 
     if args.report:
-        fd = os.open(report_file_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
-        report = os.fdopen(fd, 'w', encoding='utf-8')
+        fd = os.open(report_file_path, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
+        report = os.fdopen(fd, 'w+', encoding='utf-8')
 
     fd = os.open(new_db_file_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
     with os.fdopen(fd, 'w+', newline='', encoding='utf-8') as db:
@@ -526,12 +526,11 @@ if __name__ == "__main__":
         os.remove(new_db_file_path)
 
     if args.report:
-        report.close()
         if total_changes > 0:
-            report = open(report_file_path, 'r', encoding='utf8')
-            print (report.read())
-            report.close()
-            os.remove(report_file_path)
+            report.flush()
+            report.seek(0)
+            shutil.copyfileobj(report, sys.stdout)
+        report.close()
+        os.remove(report_file_path)
+        if total_changes > 0:
             sys.exit(1)
-        else:
-            os.remove(report_file_path)

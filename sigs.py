@@ -20,7 +20,7 @@ import codecs
 if sys.version_info < (3, 6):
     import sha3  # pylint: disable=import-error
 
-__version_info__ = (1, 8, 0)
+__version_info__ = (1, 8, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name
@@ -356,11 +356,9 @@ if __name__ == "__main__":
                 for filename in filenames:
                     fname = os.path.join(root, filename)
                     if os.path.isfile(fname):
-                        readable = hash_file(fname)
-                        print_hashes(fname, readable)
+                        print_hashes(fname, hash_file(fname))
         else:
             if os.path.isfile(path) or path == "-":
-                readable = hash_file(path)
-                print_hashes(path, readable)
+                print_hashes(path, hash_file(path))
 
     sys.exit(0)

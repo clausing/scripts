@@ -16,11 +16,12 @@ import hashlib
 import base64
 import contextlib
 import codecs
+import signal
 
 if sys.version_info < (3, 6):
     import sha3  # pylint: disable=import-error
 
-__version_info__ = (1, 8, 2)
+__version_info__ = (1, 9, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name
@@ -58,8 +59,13 @@ def print_header():
     print("filename")
     sys.stdout.flush()
 
-def hash_file(fname):  # pylint: disable=redefined-outer-name
-    """Compute selected hashes for the given file path (or '-' for stdin)."""
+def hash_file(fname):  # pylint: disable=redefined-outer-name,too-many-branches
+    """Compute selected hashes for the given file path (or '-' for stdin).
+
+    For regular files, stat() is captured before and after reading; a warning
+    is printed to stderr if size or mtime changed mid-read, since the
+    resulting hashes may reflect inconsistent state.
+    """
     global md5, sha1, sha256, sha3_224, sha3, sha512  # pylint: disable=global-statement
     md5 = hashlib.md5()
     sha1 = hashlib.sha1()
@@ -67,6 +73,12 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name
     sha3 = hashlib.sha3_384()
     sha3_224 = hashlib.sha3_224()
     sha512 = hashlib.sha512()
+    stat_before = None
+    if fname and fname != "-":
+        try:
+            stat_before = os.stat(fname)
+        except OSError:
+            pass
     try:
         with smart_open(fname) as f:
             for block in iter(lambda: f.read(args.block), b""):
@@ -84,6 +96,19 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name
                     sha512.update(block)
     except (IOError, PermissionError):
         return False
+    if stat_before is not None:
+        try:
+            stat_after = os.stat(fname)
+            if (stat_before.st_size != stat_after.st_size
+                    or stat_before.st_mtime_ns != stat_after.st_mtime_ns):
+                print(
+                    f"{sys.argv[0]}: {fname}: file changed during hashing "
+                    f"(size {stat_before.st_size} -> {stat_after.st_size}, "
+                    f"mtime {stat_before.st_mtime_ns} -> {stat_after.st_mtime_ns})",
+                    file=sys.stderr,
+                )
+        except OSError:
+            pass
     return True
 
 def print_hashes(fname, readable=True):  # pylint: disable=redefined-outer-name,too-many-branches,too-many-statements
@@ -205,7 +230,14 @@ def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
         if os.path.isfile(fpath) or fpath == "-":
             with smart_open(fpath) as f:
                 for line in f:
-                    line = line.decode('utf-8')
+                    try:
+                        line = line.decode('utf-8')
+                    except UnicodeDecodeError as exc:
+                        print(
+                            f"{sys.argv[0]}: skipping line with encoding error: {exc}",
+                            file=sys.stderr,
+                        )
+                        continue
                     line = line.strip('\n')
                     parts = str(line).split("  ")
                     if len(parts) < 2 or not parts[1].strip():
@@ -277,9 +309,13 @@ def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
 
 
 if __name__ == "__main__":
+    # restore default SIGPIPE behavior so piping to head/less doesn't traceback
+    if hasattr(signal, "SIGPIPE"):
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     # define switches and commandline arguments
     parser = argparse.ArgumentParser(description="Calculate hashes")
-    parser.add_argument("files", metavar="FILE", nargs="*", default="-", help="files to hash")
+    parser.add_argument("files", metavar="FILE", nargs="*", default=["-"], help="files to hash")
     parser.add_argument(
         "-V", "--version", action="version",
         help="print version number", version="%(prog)s v" + __version__
@@ -293,7 +329,6 @@ if __name__ == "__main__":
         "--all",
         action="store_true",
         help="All (MD5, SHA1, SHA256, SHA512, and SHA3-384), default if no other options chosen",
-        default="true",
     )
     parser.add_argument(
         "-m", "--md5", action="store_true", help="MD5 signature (md5sum equivalent output)"
@@ -330,10 +365,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # if any hash switches are specified turn -a off
+    if args.block <= 0:
+        parser.error("block size must be > 0")
+
+    # default to --all only when no specific hash switch and not in check mode
     any_hash = args.md5 or args.sha1 or args.sha256 or args.sha3 or args.sha3_224 or args.sha512
     if any_hash or args.check:
         args.all = False
+    elif not args.all:
+        args.all = True
     #if args.base and not args.check:
     #    print("-b not valid without -c")
     #    sys.exit(255)

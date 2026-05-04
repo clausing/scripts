@@ -20,7 +20,7 @@ import codecs
 if sys.version_info < (3, 6):
     import sha3  # pylint: disable=import-error
 
-__version_info__ = (1, 8, 1)
+__version_info__ = (1, 8, 2)
 __version__ = ".".join(map(str, __version_info__))
 
 md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name
@@ -37,7 +37,7 @@ def smart_open(filepath=None):
     try:
         yield fh
     finally:
-        if fh is not sys.stdin:
+        if fh is not sys.stdin.buffer:
             fh.close()
 
 
@@ -231,7 +231,8 @@ def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
                         hash_file(parts[1])
                     else:
                         print(parts[1], ": File not found")
-                        break
+                        failures += 1
+                        continue
                     if len(parts[0]) == 32:
                         if args.md5 and (parts[0] == md5.hexdigest()):
                             print (parts[1] + ": OK")
@@ -348,6 +349,8 @@ if __name__ == "__main__":
     count_hashes()
 
     # process commandline arguments
+    # pylint: disable=invalid-name
+    had_error = False
     for path in args.files:
         if os.path.isdir(os.path.abspath(path)) and args.recursive:
             if args.fullpath:
@@ -356,9 +359,18 @@ if __name__ == "__main__":
                 for filename in filenames:
                     fname = os.path.join(root, filename)
                     if os.path.isfile(fname):
-                        print_hashes(fname, hash_file(fname))
+                        ok = hash_file(fname)
+                        if not ok:
+                            had_error = True
+                        print_hashes(fname, ok)
         else:
             if os.path.isfile(path) or path == "-":
-                print_hashes(path, hash_file(path))
+                ok = hash_file(path)
+                if not ok:
+                    had_error = True
+                print_hashes(path, ok)
+            else:
+                print(f"{sys.argv[0]}: {path}: No such file or directory", file=sys.stderr)
+                had_error = True
 
-    sys.exit(0)
+    sys.exit(1 if had_error else 0)

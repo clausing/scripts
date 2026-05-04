@@ -17,14 +17,43 @@ import base64
 import contextlib
 import codecs
 import signal
+from collections import namedtuple
 
 if sys.version_info < (3, 6):
-    import sha3  # pylint: disable=import-error
+    import sha3  # pylint: disable=import-error,unused-import
 
-__version_info__ = (1, 9, 0)
+__version_info__ = (1, 9, 1)
 __version__ = ".".join(map(str, __version_info__))
 
-md5 = sha1 = sha256 = sha3_224 = sha3 = sha512 = hashcnt = args = None  # pylint: disable=invalid-name
+# Single source of truth for supported hash algorithms.
+# digest_len is the length of the formatted (hex or base64) digest string,
+# used by check_hashes() to identify the algorithm from a hash-file line.
+HashSpec = namedtuple(
+    "HashSpec",
+    "arg_attr psv_header verbose_label factory format_fn digest_len",
+)
+
+
+def _hex(h):
+    """Return hex digest of a hashlib object."""
+    return h.hexdigest()
+
+
+def _b64(h):
+    """Return base64-encoded digest of a hashlib object (used for SHA512)."""
+    return codecs.decode(base64.b64encode(h.digest()))
+
+
+HASH_SPECS = (
+    HashSpec("md5",      "md5",      "  MD5:  ",     hashlib.md5,      _hex, 32),
+    HashSpec("sha1",     "sha1",     "  SHA1: ",     hashlib.sha1,     _hex, 40),
+    HashSpec("sha256",   "sha256",   "  SHA256: ",   hashlib.sha256,   _hex, 64),
+    HashSpec("sha512",   "sha512",   "  SHA512: ",   hashlib.sha512,   _b64, 88),
+    HashSpec("sha3_224", "sha3-224", "  SHA3-224: ", hashlib.sha3_224, _hex, 56),
+    HashSpec("sha3",     "sha3-384", "  SHA3-384: ", hashlib.sha3_384, _hex, 96),
+)
+
+args = None  # pylint: disable=invalid-name
 
 
 @contextlib.contextmanager
@@ -42,37 +71,27 @@ def smart_open(filepath=None):
             fh.close()
 
 
+def selected_specs():
+    """Return the list of HASH_SPECS the user has selected via args."""
+    return [s for s in HASH_SPECS if getattr(args, s.arg_attr) or args.all]
+
+
 def print_header():
     """Print PSV column headers for selected hash types."""
-    if args.md5 or args.all:
-        sys.stdout.write("md5|")
-    if args.sha1 or args.all:
-        sys.stdout.write("sha1|")
-    if args.sha256 or args.all:
-        sys.stdout.write("sha256|")
-    if args.sha512 or args.all:
-        sys.stdout.write("sha512|")
-    if args.sha3_224 or args.all:
-        sys.stdout.write("sha3-224|")
-    if args.sha3 or args.all:
-        sys.stdout.write("sha3-384|")
+    for spec in selected_specs():
+        sys.stdout.write(spec.psv_header + "|")
     print("filename")
     sys.stdout.flush()
 
-def hash_file(fname):  # pylint: disable=redefined-outer-name,too-many-branches
-    """Compute selected hashes for the given file path (or '-' for stdin).
 
-    For regular files, stat() is captured before and after reading; a warning
-    is printed to stderr if size or mtime changed mid-read, since the
-    resulting hashes may reflect inconsistent state.
+def hash_file(fname):  # pylint: disable=redefined-outer-name
+    """Compute selected hashes for fname (or '-' for stdin).
+
+    Returns a dict {arg_attr: hash_obj} on success, or None on IO/permission
+    error. For regular files, stat() is captured before and after reading;
+    a warning is printed to stderr if size or mtime changed mid-read.
     """
-    global md5, sha1, sha256, sha3_224, sha3, sha512  # pylint: disable=global-statement
-    md5 = hashlib.md5()
-    sha1 = hashlib.sha1()
-    sha256 = hashlib.sha256()
-    sha3 = hashlib.sha3_384()
-    sha3_224 = hashlib.sha3_224()
-    sha512 = hashlib.sha512()
+    hashes = {spec.arg_attr: spec.factory() for spec in selected_specs()}
     stat_before = None
     if fname and fname != "-":
         try:
@@ -82,20 +101,10 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name,too-many-branches
     try:
         with smart_open(fname) as f:
             for block in iter(lambda: f.read(args.block), b""):
-                if args.md5 or args.all:
-                    md5.update(block)
-                if args.sha1 or args.all:
-                    sha1.update(block)
-                if args.sha256 or args.all:
-                    sha256.update(block)
-                if args.sha3_224 or args.all:
-                    sha3_224.update(block)
-                if args.sha3 or args.all:
-                    sha3.update(block)
-                if args.sha512 or args.all:
-                    sha512.update(block)
+                for h in hashes.values():
+                    h.update(block)
     except (IOError, PermissionError):
-        return False
+        return None
     if stat_before is not None:
         try:
             stat_after = os.stat(fname)
@@ -109,122 +118,47 @@ def hash_file(fname):  # pylint: disable=redefined-outer-name,too-many-branches
                 )
         except OSError:
             pass
-    return True
+    return hashes
 
-def print_hashes(fname, readable=True):  # pylint: disable=redefined-outer-name,too-many-branches,too-many-statements
-    """Print computed hashes for fname in the selected output format."""
-    if fname == "-" or readable:
-        if hashcnt == 1:
-            if args.md5:
-                print(md5.hexdigest() + "  " + (fname if fname != "-" else ""))
-            elif args.sha1:
-                print(sha1.hexdigest() + "  " + (fname if fname != "-" else ""))
-            elif args.sha256:
-                print(sha256.hexdigest() + "  " + (fname if fname != "-" else ""))
-            elif args.sha512:
-                print(
-                    codecs.decode(base64.b64encode(sha512.digest()))
-                    + "  " + (fname if fname != "-" else "")
-                )
-            elif args.sha3_224:
-                print(sha3_224.hexdigest() + "  " + (fname if fname != "-" else ""))
-            elif args.sha3:
-                print(sha3.hexdigest() + "  " + (fname if fname != "-" else ""))
-        elif args.psv:
-            if args.md5 or args.all:
-                sys.stdout.write(md5.hexdigest() + "|")
-            if args.sha1 or args.all:
-                sys.stdout.write(sha1.hexdigest() + "|")
-            if args.sha256 or args.all:
-                sys.stdout.write(sha256.hexdigest() + "|")
-            if args.sha512 or args.all:
-                sys.stdout.write(codecs.decode(base64.b64encode(sha512.digest())) + "|")
-            if args.sha3_224 or args.all:
-                sys.stdout.write(sha3_224.hexdigest() + "|")
-            if args.sha3 or args.all:
-                sys.stdout.write(sha3.hexdigest() + "|")
-            print(fname)
-        else:
-            if fname != "-":
-                print(fname + ":")
-            if args.md5 or args.all:
-                print("  MD5:  " + md5.hexdigest())
-            if args.sha1 or args.all:
-                print("  SHA1: " + sha1.hexdigest())
-            if args.sha256 or args.all:
-                print("  SHA256: " + sha256.hexdigest())
-            if args.sha512 or args.all:
-                print("  SHA512: " + codecs.decode(base64.b64encode(sha512.digest())))
-            if args.sha3_224 or args.all:
-                print("  SHA3-224: " + sha3_224.hexdigest())
-            if args.sha3 or args.all:
-                print("  SHA3-384: " + sha3.hexdigest())
+def print_hashes(fname, hashes):  # pylint: disable=redefined-outer-name
+    """Print computed hashes for fname in the selected output format.
+
+    `hashes` is the dict returned by hash_file(), or None on permission/IO error
+    (in which case "(Permission Problem)" is substituted for each digest).
+    """
+    specs = selected_specs()
+    perm_fail = hashes is None
+
+    def digest(spec):
+        return "(Permission Problem)" if perm_fail else spec.format_fn(hashes[spec.arg_attr])
+
+    if len(specs) == 1:
+        spec = specs[0]
+        suffix = fname if fname != "-" else ""
+        print(f"{digest(spec)}  {suffix}")
+    elif args.psv:
+        for spec in specs:
+            sys.stdout.write(digest(spec) + "|")
+        print(fname)
     else:
-        if hashcnt == 1:
-            if args.md5:
-                print("(Permission Problem)" + "  " + fname)
-            elif args.sha1:
-                print("(Permission Problem)" + "  " + fname)
-            elif args.sha256:
-                print("(Permission Problem)" + "  " + fname)
-            elif args.sha512:
-                print("(Permission Problem)" + "  " + fname)
-            elif args.sha3_224:
-                print("(Permission Problem)" + "  " + fname)
-            elif args.sha3:
-                print("(Permission Problem)" + "  " + fname)
-        elif args.psv:
-            if args.md5 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            if args.sha1 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            if args.sha256 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            if args.sha512 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            if args.sha3_224 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            if args.sha3 or args.all:
-                sys.stdout.write("(Permission Problem)" + "|")
-            print(fname)
-        else:
+        if fname != "-":
             print(fname + ":")
-            if args.md5 or args.all:
-                print("  MD5:  " + "(Permission Problem)")
-            if args.sha1 or args.all:
-                print("  SHA1: " + "(Permission Problem)")
-            if args.sha256 or args.all:
-                print("  SHA256: " + "(Permission Problem)")
-            if args.sha512 or args.all:
-                print("  SHA512: " + "(Permission Problem)")
-            if args.sha3_224 or args.all:
-                print("  SHA3-224: " + "(Permission Problem)")
-            if args.sha3 or args.all:
-                print("  SHA3-384: " + "(Permission Problem)")
-
+        for spec in specs:
+            print(spec.verbose_label + digest(spec))
     sys.stdout.flush()
 
-def count_hashes():
-    """Count how many hash types are selected and store in global hashcnt."""
-    global hashcnt  # pylint: disable=global-statement
-    hashcnt = 0
-    if args.all:
-        hashcnt = 6
-    if args.md5:
-        hashcnt += 1
-    if args.sha1:
-        hashcnt += 1
-    if args.sha256:
-        hashcnt += 1
-    if args.sha3:
-        hashcnt += 1
-    if args.sha3_224:
-        hashcnt += 1
-    if args.sha512:
-        hashcnt += 1
 
-def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
-    """Read hash-file(s) from args.files and verify each listed file."""
+def count_hashes():
+    """Return how many hash types are selected."""
+    return len(selected_specs())
+
+def check_hashes():
+    """Read hash-file(s) from args.files and verify each listed file.
+
+    Algorithm is inferred from digest length. Lengths are unambiguous within
+    the set this script supports; SHA3-256/SHA3-512 are not supported, so
+    SHA3-224 (56) and SHA3-384 (96) are the only SHA3 variants in play.
+    """
     failures = 0
     for fpath in args.files:
         if os.path.isfile(fpath) or fpath == "-":
@@ -242,69 +176,26 @@ def check_hashes():  # pylint: disable=too-many-branches,too-many-statements
                     parts = str(line).split("  ")
                     if len(parts) < 2 or not parts[1].strip():
                         continue
-                    # Algorithm is inferred from digest length. Lengths are
-                    # unambiguous within the set supported by this script:
-                    # SHA3-224 (56) and SHA3-384 (96) are the only SHA3
-                    # variants supported; SHA3-256/SHA3-512 are not.
-                    if len(parts[0]) == 32:
-                        args.md5 = True
-                    elif len(parts[0]) == 40:
-                        args.sha1 = True
-                    elif len(parts[0]) == 64:
-                        args.sha256 = True
-                    elif len(parts[0]) == 96:
-                        args.sha3 = True
-                    elif len(parts[0]) == 56:
-                        args.sha3_224 = True
-                    elif len(parts[0]) == 88:
-                        args.sha512 = True
-                    count_hashes()
-                    if os.path.isfile(parts[1]):
-                        hash_file(parts[1])
-                    else:
+                    spec = next(
+                        (s for s in HASH_SPECS if s.digest_len == len(parts[0])),
+                        None,
+                    )
+                    if spec is None:
+                        continue
+                    if not os.path.isfile(parts[1]):
                         print(parts[1], ": File not found")
                         failures += 1
                         continue
-                    if len(parts[0]) == 32:
-                        if args.md5 and (parts[0] == md5.hexdigest()):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
-                    if len(parts[0]) == 40:
-                        if args.sha1 and (parts[0] == sha1.hexdigest()):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
-                    if len(parts[0]) == 64:
-                        if args.sha256 and (parts[0] == sha256.hexdigest()):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
-                    if len(parts[0]) == 96:
-                        if args.sha3 and (parts[0] == sha3.hexdigest()):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
-                    if len(parts[0]) == 56:
-                        if args.sha3_224 and (parts[0] == sha3_224.hexdigest()):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
-                    if len(parts[0]) == 88:
-                        sha512_b64 = codecs.decode(base64.b64encode(sha512.digest()))
-                        if args.sha512 and (parts[0] == sha512_b64):
-                            print (parts[1] + ": OK")
-                        else:
-                            print (parts[1] + ": FAILED")
-                            failures += 1
+                    setattr(args, spec.arg_attr, True)
+                    hashes = hash_file(parts[1])
+                    if hashes is None or parts[0] != spec.format_fn(hashes[spec.arg_attr]):
+                        print(parts[1] + ": FAILED")
+                        failures += 1
+                    else:
+                        print(parts[1] + ": OK")
         sys.stdout.flush()
     if failures > 0:
-        print (sys.argv[0] + ": WARNING: " + str(failures) + " checksums did not match")
+        print(sys.argv[0] + ": WARNING: " + str(failures) + " checksums did not match")
         sys.exit(255)
 
 
@@ -385,9 +276,6 @@ if __name__ == "__main__":
         check_hashes()
         sys.exit(0)
 
-    # count whether a non-zero number of hashes are specified (affects output format)
-    count_hashes()
-
     # process commandline arguments
     # pylint: disable=invalid-name
     had_error = False
@@ -399,16 +287,16 @@ if __name__ == "__main__":
                 for filename in filenames:
                     fname = os.path.join(root, filename)
                     if os.path.isfile(fname):
-                        ok = hash_file(fname)
-                        if not ok:
+                        result = hash_file(fname)
+                        if result is None:
                             had_error = True
-                        print_hashes(fname, ok)
+                        print_hashes(fname, result)
         else:
             if os.path.isfile(path) or path == "-":
-                ok = hash_file(path)
-                if not ok:
+                result = hash_file(path)
+                if result is None:
                     had_error = True
-                print_hashes(path, ok)
+                print_hashes(path, result)
             else:
                 print(f"{sys.argv[0]}: {path}: No such file or directory", file=sys.stderr)
                 had_error = True

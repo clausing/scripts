@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2026-05-03
-    Version: 1.0.1
+    Date: 2026-05-07
+    Version: 1.0.3
 
     Perform file integrity check on Unix/Linux systems
 
@@ -30,6 +30,7 @@ import csv
 #import configparser
 import os
 import errno
+import signal
 import sys
 from pathlib import Path
 import argparse
@@ -51,7 +52,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     have_statx = True
 
-__version_info__ = (1, 0, 2)
+__version_info__ = (1, 0, 3)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"
@@ -443,6 +444,7 @@ def move_file(file1, file2):
     shutil.move(file2, file1)
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     parser = argparse.ArgumentParser(description="File integrity check.")
     parser.add_argument(

@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2026-05-07
-    Version: 1.0.3
+    Date: 2026-09-01
+    Version: 1.1.0
 
     Perform file integrity check on Unix/Linux systems
 
@@ -45,14 +45,17 @@ from stat import *
 from time import strftime, localtime
 
 # pylint: disable=invalid-name
-try:
-    import statx
-except (ImportError, ModuleNotFoundError):
-    have_statx = False
-else:
+if sys.version_info < (3, 15):
+    try:
+        import statx
+    except (ImportError, ModuleNotFoundError):
+        have_statx = False
+    else:
+        have_statx = True
+else: 
     have_statx = True
 
-__version_info__ = (1, 0, 3)
+__version_info__ = (1, 1, 0)
 __version__ = ".".join(map(str, __version_info__))
 new_db_file_path = "/run/ficheck.db.new"
 old_db_file_path = "/var/lib/ficheck/ficheck.db"

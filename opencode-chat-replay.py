@@ -15,15 +15,19 @@ Examples:
   ./opencode-chat-replay.py --slug swift-star --format json --out chat.json
   ./opencode-chat-replay.py --slug swift-star --format jsonl --out chat.jsonl
   ./opencode-chat-replay.py --all --out-dir ./transcripts
+  ./opencode-chat-replay.py --list --start 2026-10-01 --end 2026-10-07
+  ./opencode-chat-replay.py --all --start "2026-10-06 14:30" --format jsonl --out recent.jsonl
+  ./opencode-chat-replay.py -d /mnt/image/home/user --list
+  ./opencode-chat-replay.py -f /evidence/opencode.db --latest
 """
 
 from __future__ import annotations
 
 __description__ = "Recreate an opencode session chat transcript from the opencode SQLite DB"
 __author__ = "Jim Clausing"
-__version_info__ = (1, 0, 0)
+__version_info__ = (1, 2, 0)
 __version__ = ".".join(map(str, __version_info__))
-__date__ = "2026-10-07"
+__date__ = "2026-10-08"
 
 import argparse
 import json
@@ -35,8 +39,68 @@ import tempfile
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
-DEFAULT_DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
+DB_RELPATH = os.path.join(".local", "share", "opencode", "opencode.db")
+DEFAULT_DB = os.path.join(os.path.expanduser("~"), DB_RELPATH)
 DEFAULT_MAX_TOOL_OUTPUT = 2000
+
+
+# --------------------------------------------------------------------------- #
+# time filtering
+# --------------------------------------------------------------------------- #
+def parse_timestamp(value: str) -> float:
+    """Parse timestamp in 'YYYY-MM-DD HH:MM:SS' format (time optional, 24-hour).
+
+    Also accepts raw Unix timestamp (float/int).
+
+    Examples:
+        '2026-10-07'            -> 2026-10-07 00:00:00
+        '2026-10-07 14'         -> 2026-10-07 14:00:00
+        '2026-10-07 14:30'      -> 2026-10-07 14:30:00
+        '2026-10-07 14:30:45'   -> 2026-10-07 14:30:45
+        '1728086400'            -> Unix timestamp
+    """
+    # Accept raw Unix timestamp
+    try:
+        return float(value)
+    except ValueError:
+        pass
+
+    value = value.strip()
+
+    # Try ISO format first (handles 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:MM:SS')
+    # Replace space with T for fromisoformat compatibility
+    iso_candidate = value.replace(' ', 'T')
+    try:
+        return datetime.fromisoformat(iso_candidate).timestamp()
+    except ValueError:
+        pass
+
+    # Try space-separated formats with optional time components
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d %H', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(value, fmt).timestamp()
+        except ValueError:
+            continue
+
+    raise argparse.ArgumentTypeError(
+        f"Invalid timestamp: '{value}'. Use 'YYYY-MM-DD HH:MM:SS' "
+        "(time optional, 24-hour) or Unix timestamp."
+    )
+
+
+def in_window(ms: Any, start: float | None, end: float | None) -> bool:
+    """True if an epoch-milliseconds timestamp falls in [start, end]."""
+    if start is None and end is None:
+        return True
+    try:
+        stamp = float(ms) / 1000
+    except (TypeError, ValueError):
+        return True
+    if start is not None and stamp < start:
+        return False
+    if end is not None and stamp > end:
+        return False
+    return True
 
 
 # --------------------------------------------------------------------------- #
@@ -127,8 +191,12 @@ def fence(text: str, lang: str = "") -> str:
 # --------------------------------------------------------------------------- #
 # data access
 # --------------------------------------------------------------------------- #
-def list_sessions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    return conn.execute(
+def list_sessions(
+    conn: sqlite3.Connection,
+    start: float | None = None,
+    end: float | None = None,
+) -> list[sqlite3.Row]:
+    rows = conn.execute(
         """
         SELECT s.id, s.title, s.slug, s.directory, s.version, s.parent_id,
                s.time_created, s.time_updated,
@@ -138,6 +206,32 @@ def list_sessions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
         ORDER BY s.time_created
         """
     ).fetchall()
+    if start is None and end is None:
+        return rows
+    # A session is in range when its [created, updated] span overlaps the window.
+    return [
+        r
+        for r in rows
+        if session_overlaps(
+            r["time_created"], r["time_updated"] or r["time_created"], start, end
+        )
+    ]
+
+
+def session_overlaps(
+    created_ms: Any, updated_ms: Any, start: float | None, end: float | None
+) -> bool:
+    """True when the [created, updated] span of a session overlaps [start, end]."""
+    try:
+        created = float(created_ms) / 1000
+        updated = float(updated_ms) / 1000
+    except (TypeError, ValueError):
+        return True
+    if start is not None and updated < start:
+        return False
+    if end is not None and created > end:
+        return False
+    return True
 
 
 def get_session(conn: sqlite3.Connection, session_id: str) -> sqlite3.Row | None:
@@ -480,8 +574,12 @@ def render_jsonl(session: dict, turns: list[dict]) -> str:
 # --------------------------------------------------------------------------- #
 # listing
 # --------------------------------------------------------------------------- #
-def print_list(conn: sqlite3.Connection) -> None:
-    sessions = list_sessions(conn)
+def print_list(
+    conn: sqlite3.Connection,
+    start: float | None = None,
+    end: float | None = None,
+) -> None:
+    sessions = list_sessions(conn, start, end)
     if not sessions:
         print("no sessions found")
         return
@@ -525,15 +623,17 @@ def resolve_session(
     conn: sqlite3.Connection, args: argparse.Namespace
 ) -> list[sqlite3.Row]:
     """Resolve --session/--slug/--latest/--all into a list of session rows."""
+    start, end = args.start, args.end
+
     if args.all:
-        return list_sessions(conn)
+        return list_sessions(conn, start, end)
 
     if args.session:
         row = get_session(conn, args.session)
         if row is None:
             matches = [
                 r
-                for r in list_sessions(conn)
+                for r in list_sessions(conn, start, end)
                 if r["id"].startswith(args.session)
             ]
             if len(matches) == 1:
@@ -544,9 +644,16 @@ def resolve_session(
             for m in matches:
                 print(f"  {m['id']}  {m['title']}", file=sys.stderr)
             sys.exit(1)
+        if not session_overlaps(
+            row["time_created"], row["time_updated"] or row["time_created"], start, end
+        ):
+            sys.exit(
+                f"error: session {row['id']} ({ts(row['time_created'])}) "
+                "is outside the --start/--end window"
+            )
         return [row]
 
-    sessions = list_sessions(conn)
+    sessions = list_sessions(conn, start, end)
 
     if args.slug:
         matches = [r for r in sessions if r["slug"] == args.slug]
@@ -558,10 +665,10 @@ def resolve_session(
 
     if args.latest:
         if not sessions:
-            sys.exit("error: no sessions found")
+            sys.exit("error: no sessions found in window")
         return [sessions[-1]]
 
-    print_list(conn)
+    print_list(conn, start, end)
     sys.exit(0)
 
 
@@ -570,8 +677,23 @@ def main() -> int:
         description="Recreate an opencode session chat from the SQLite DB.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument(
-        "--db", default=DEFAULT_DB, help=f"path to opencode.db (default: {DEFAULT_DB})"
+    src = p.add_mutually_exclusive_group()
+    src.add_argument(
+        "-f",
+        "--file",
+        "--db",
+        dest="db",
+        metavar="FILE",
+        help=f"path to opencode.db (default: {DEFAULT_DB})",
+    )
+    src.add_argument(
+        "-d",
+        "--dir",
+        metavar="HOME",
+        help=(
+            "home directory to search for opencode.db "
+            f"(<HOME>/{DB_RELPATH}), e.g. a mounted disk image"
+        ),
     )
     p.add_argument(
         "-V",
@@ -585,6 +707,24 @@ def main() -> int:
     p.add_argument("--slug", metavar="SLUG", help="session slug (exact or substring)")
     p.add_argument("--latest", action="store_true", help="most recent session")
     p.add_argument("--all", action="store_true", help="export every session")
+    p.add_argument(
+        "--start",
+        type=parse_timestamp,
+        metavar="TIME",
+        help=(
+            "only include activity at/after TIME "
+            "(YYYY-MM-DD [HH:MM:SS], 24-hour; or Unix timestamp)"
+        ),
+    )
+    p.add_argument(
+        "--end",
+        type=parse_timestamp,
+        metavar="TIME",
+        help=(
+            "only include activity at/before TIME "
+            "(YYYY-MM-DD [HH:MM:SS], 24-hour; or Unix timestamp)"
+        ),
+    )
     p.add_argument(
         "--include-children", action="store_true", help="follow child (sub) sessions"
     )
@@ -610,15 +750,22 @@ def main() -> int:
     p.add_argument("--out", metavar="FILE", help="write to FILE instead of stdout")
     p.add_argument("--out-dir", metavar="DIR", help="write one file per session into DIR")
     args = p.parse_args()
+    if args.start is not None and args.end is not None and args.start > args.end:
+        p.error("--start is later than --end")
 
-    conn, tmpdir = connect(args.db)
+    if args.dir:
+        db_path = os.path.join(os.path.expanduser(args.dir), DB_RELPATH)
+    else:
+        db_path = os.path.expanduser(args.db) if args.db else DEFAULT_DB
+
+    conn, tmpdir = connect(db_path)
     try:
         if args.list:
-            print_list(conn)
+            print_list(conn, args.start, args.end)
             return 0
 
         if not (args.session or args.slug or args.latest or args.all):
-            print_list(conn)
+            print_list(conn, args.start, args.end)
             return 0
 
         sessions = resolve_session(conn, args)
@@ -631,6 +778,11 @@ def main() -> int:
             if args.include_children:
                 session["children"] = [dict(c) for c in child_sessions(conn, row["id"])]
             turns = fetch_turns(conn, row["id"])
+            turns = [
+                t
+                for t in turns
+                if in_window(t.get("time_created"), args.start, args.end)
+            ]
 
             if args.format == "json":
                 text = render_json(session, turns)

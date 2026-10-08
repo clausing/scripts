@@ -15,17 +15,19 @@ Output: JSON Lines (NDJSON) - one JSON object per record, streamable and parseab
 
 __description__ = 'Extract forensic logs from Hermes Agent for incident response'
 __author__ = 'Jim Clausing'
-__version_info__ = (1, 0, 0)
+__version_info__ = (1, 2, 1)
 __version__ = '.'.join(map(str, __version_info__))
-__date__ = '2026-10-07'
+__date__ = '2026-10-08'
 
 import argparse
 import base64
 import json
 import re
+import shutil
 import signal
 import sqlite3
 import sys
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, Iterator, Generator
@@ -91,15 +93,16 @@ class ExtractionConfig:  # pylint: disable=too-many-instance-attributes
     end_time: Optional[float]
     limit: Optional[int]
     pretty: bool
+    state_db: Optional[Path] = None
 
 
-class HermesForensicExtractor:
+class HermesForensicExtractor:  # pylint: disable=too-many-instance-attributes
     """Reads Hermes Agent data stores and yields forensic records as dicts."""
 
     def __init__(self, config: ExtractionConfig):
         self.config = config
         self.hermes_home = config.hermes_home
-        self.state_db = self.hermes_home / "state.db"
+        self.state_db = config.state_db or self.hermes_home / "state.db"
         self.sessions_dir = self.hermes_home / "sessions"
         self.logs_dir = self.hermes_home / "logs"
         self.stats = {
@@ -109,10 +112,32 @@ class HermesForensicExtractor:
             "request_dumps": 0,
             "log_entries": 0,
         }
+        self._snapshot_dir: Optional[str] = None
+        self._snapshot_db: Optional[Path] = None
+
+    def _snapshot(self) -> Path:
+        """Copy state.db plus -wal/-shm into a temp dir (once) so reads never touch the source"""
+        if self._snapshot_db is None:
+            self._snapshot_dir = tempfile.mkdtemp(prefix="hermes-extract-")
+            dest = Path(self._snapshot_dir) / self.state_db.name
+            shutil.copy2(self.state_db, dest)
+            for suffix in ("-wal", "-shm"):
+                side = Path(str(self.state_db) + suffix)
+                if side.exists():
+                    shutil.copy2(side, Path(str(dest) + suffix))
+            self._snapshot_db = dest
+        return self._snapshot_db
+
+    def close(self) -> None:
+        """Remove the temporary database snapshot, if one was made"""
+        if self._snapshot_dir:
+            shutil.rmtree(self._snapshot_dir, ignore_errors=True)
+            self._snapshot_dir = None
+            self._snapshot_db = None
 
     def _connect_db(self) -> sqlite3.Connection:
-        """Open read-only connection to state.db"""
-        conn = sqlite3.connect(f"file:{self.state_db}?mode=ro", uri=True)
+        """Open read-only connection to a snapshot of state.db"""
+        conn = sqlite3.connect(f"file:{self._snapshot()}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -469,6 +494,53 @@ class HermesForensicExtractor:
         yield from self.extract_request_dumps()
         yield from self.extract_logs()
 
+    def list_sessions(self) -> list:
+        """List all sessions with basic info for --list mode"""
+        conn = self._connect_db()
+        try:
+            query = """
+                SELECT s.id, s.source, s.model, s.started_at, s.ended_at,
+                       COUNT(m.id) as message_count
+                FROM sessions s
+                LEFT JOIN messages m ON m.session_id = s.id
+                WHERE 1=1
+            """
+            params = []
+
+            if self.config.session_filter:
+                query += " AND s.id LIKE ?"
+                params.append(f"%{self.config.session_filter}%")
+
+            if self.config.source_filter:
+                query += " AND s.source = ?"
+                params.append(self.config.source_filter)
+
+            query += " GROUP BY s.id ORDER BY s.started_at DESC"
+
+            if self.config.limit:
+                query += f" LIMIT {self.config.limit}"
+
+            cursor = conn.execute(query, params)
+            sessions = []
+            for row in cursor:
+                session = {
+                    "id": row["id"],
+                    "source": row["source"],
+                    "model": row["model"],
+                    "started_at": row["started_at"],
+                    "ended_at": row["ended_at"],
+                    "message_count": row["message_count"],
+                }
+                # Convert timestamps to ISO format
+                if session["started_at"]:
+                    session["started_iso"] = self._format_timestamp(session["started_at"])
+                if session["ended_at"]:
+                    session["ended_iso"] = self._format_timestamp(session["ended_at"])
+                sessions.append(session)
+            return sessions
+        finally:
+            conn.close()
+
     def _write_records(self, output_handle) -> None:
         """Write all extracted records to a handle as JSON lines"""
         indent = 2 if self.config.pretty else None
@@ -510,14 +582,33 @@ Examples:
 
   # Pretty-print for human review
   %(prog)s --pretty -o review.jsonl
+
+  # Run against a mounted disk image (looks in <dir>/.hermes)
+  %(prog)s -d /mnt/image/home/user -o evidence.jsonl
+
+  # Point at a state.db directly (sessions/ and logs/ are read from its directory)
+  %(prog)s -f /evidence/state.db -o evidence.jsonl
         """
     )
 
-    parser.add_argument(
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument(
         "--hermes-home",
         type=Path,
         default=Path.home() / ".hermes",
         help="Hermes home directory (default: ~/.hermes)"
+    )
+    source.add_argument(
+        "-d", "--dir",
+        type=Path,
+        metavar="HOME",
+        help="User home directory containing .hermes (e.g. on a mounted disk image)"
+    )
+    source.add_argument(
+        "-f", "--file",
+        type=Path,
+        metavar="STATE_DB",
+        help="Path to a state.db file; sessions/ and logs/ are read from its directory"
     )
     parser.add_argument(
         "-o", "--output",
@@ -553,6 +644,11 @@ Examples:
         "--pretty",
         action="store_true",
         help="Pretty-print JSON (default: compact NDJSON)"
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List sessions (id, source, model, started, message count) and exit"
     )
     parser.add_argument(
         "-V", "--version",
@@ -597,16 +693,57 @@ def main():
     """Entry point: validate paths, build config, run extraction"""
     args = parse_args()
 
-    # Validate hermes home
-    hermes_home = args.hermes_home.expanduser().resolve()
-    if not hermes_home.exists():
-        print(f"Error: Hermes home not found: {hermes_home}", file=sys.stderr)
+    # Resolve hermes home / state.db from --file, --dir or --hermes-home
+    if args.file:
+        state_db = args.file.expanduser().resolve()
+        hermes_home = state_db.parent
+    else:
+        if args.dir:
+            hermes_home = (args.dir.expanduser() / ".hermes").resolve()
+        else:
+            hermes_home = args.hermes_home.expanduser().resolve()
+        state_db = hermes_home / "state.db"
+        if not hermes_home.exists():
+            print(f"Error: Hermes home not found: {hermes_home}", file=sys.stderr)
+            sys.exit(1)
+    if not state_db.exists():
+        print(f"Error: state.db not found: {state_db}", file=sys.stderr)
         sys.exit(1)
 
-    state_db = hermes_home / "state.db"
-    if not state_db.exists():
-        print(f"Error: state.db not found in {hermes_home}", file=sys.stderr)
-        sys.exit(1)
+    # Handle --list mode
+    if args.list:
+        config = ExtractionConfig(
+            hermes_home=hermes_home,
+            output_file=None,
+            include_sessions=True,
+            include_messages=False,
+            include_model_usage=False,
+            include_request_dumps=False,
+            include_logs=False,
+            session_filter=args.session_filter,
+            source_filter=args.source_filter,
+            start_time=args.start_time,
+            end_time=args.end_time,
+            limit=args.limit,
+            pretty=args.pretty,
+            state_db=state_db,
+        )
+        extractor = HermesForensicExtractor(config)
+        try:
+            sessions = extractor.list_sessions()
+        finally:
+            extractor.close()
+        if not sessions:
+            print("No sessions found", file=sys.stderr)
+            return
+        # Print as table
+        print(f"{'SESSION ID':<50} {'SOURCE':<12} {'MODEL':<30} {'STARTED':<20} {'MESSAGES':>8}")
+        print("-" * 130)
+        for s in sessions:
+            started = s.get("started_iso", "unknown")[:19] if s.get("started_iso") else "unknown"
+            model = (s["model"] or "unknown")[:29]
+            print(f"{s['id']:<50} {s['source']:<12} {model:<30} {started:<20} {s['message_count']:>8}")
+        return
 
     # Handle presets
     include_sessions = not args.no_sessions
@@ -638,10 +775,14 @@ def main():
         end_time=args.end_time,
         limit=args.limit,
         pretty=args.pretty,
+        state_db=state_db,
     )
 
     extractor = HermesForensicExtractor(config)
-    stats = extractor.run()
+    try:
+        stats = extractor.run()
+    finally:
+        extractor.close()
 
     # Print summary to stderr
     print("\nExtraction complete:", file=sys.stderr)

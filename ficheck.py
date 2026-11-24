@@ -429,7 +429,10 @@ def process_entry(fname):
     ctime = "{:10.0f}".format(status.st_ctime)
     if have_statx:
         try:
-            btime = "{:10.0f}".format(statx.statx(fname).btime)
+            if sys.version_info < (3, 15):
+                btime = "{:10.0f}".format(statx.statx(fname).btime)
+            else:
+                btime = "{:10.0f}".format(os.statx(fname).btime)
         except TypeError:
             btime = 0
     else:

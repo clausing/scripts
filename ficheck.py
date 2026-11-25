@@ -75,7 +75,7 @@ def load_libcap():
 
 libcap = load_libcap()
 
-__version_info__ = (1, 3, 1)
+__version_info__ = (1, 3, 2)
 __version__ = ".".join(map(str, __version_info__))
 # fields per db entry: path, inode, perms, links, uid, gid, size, ctime, mtime, btime, hash, caps
 NUM_FIELDS = 12
@@ -403,13 +403,13 @@ def process_entry(fname):
     try:
         if status.st_size == 0:
             sha256str = "0"
+        elif os.path.islink(fname):
+            sha256.update(os.readlink(fname).encode())
+            sha256str = sha256.hexdigest()
         elif os.path.isdir(fname):
             sha256str = "Dir"
         elif S_ISBLK(status.st_mode) or S_ISCHR(status.st_mode) or S_ISFIFO(status.st_mode):
             sha256str= "Device"
-        elif os.path.islink(fname):
-            sha256.update(os.readlink(fname).encode())
-            sha256str = sha256.hexdigest()
         elif status.st_size > 0 and os.path.isfile(fname):
             with open(fname, "rb") as f:
                 if status.st_size > args.size:
@@ -430,10 +430,14 @@ def process_entry(fname):
     if have_statx:
         try:
             if sys.version_info < (3, 15):
-                btime = "{:10.0f}".format(statx.statx(fname).btime)
+                btime = "{:10.0f}".format(statx.statx(fname, follow_symlinks=False).btime)
             else:
-                btime = "{:10.0f}".format(os.statx(fname,0).stx_btime)
+                btime = "{:10.0f}".format(os.statx(fname, 0, follow_symlinks=False).stx_btime)
         except TypeError:
+            btime = 0
+        except OSError as err:
+            # e.g. dangling symlink: python 3.15 os.statx() raises ENOENT even with follow_symlinks=False
+            print(f"Warning: no birth time for {fname}: {err.strerror}", file=sys.stderr)
             btime = 0
     else:
         btime = 0

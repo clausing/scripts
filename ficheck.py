@@ -3,8 +3,8 @@
 
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
-    Date: 2026-11-24
-    Version: 1.3.0
+    Date: 2026-11-25
+    Version: 1.3.1
 
     Perform file integrity check on Unix/Linux systems (hashes, timestamps,
     and, if libcap is available, file capabilities)
@@ -75,7 +75,7 @@ def load_libcap():
 
 libcap = load_libcap()
 
-__version_info__ = (1, 3, 0)
+__version_info__ = (1, 3, 1)
 __version__ = ".".join(map(str, __version_info__))
 # fields per db entry: path, inode, perms, links, uid, gid, size, ctime, mtime, btime, hash, caps
 NUM_FIELDS = 12
@@ -432,7 +432,7 @@ def process_entry(fname):
             if sys.version_info < (3, 15):
                 btime = "{:10.0f}".format(statx.statx(fname).btime)
             else:
-                btime = "{:10.0f}".format(os.statx(fname).btime)
+                btime = "{:10.0f}".format(os.statx(fname,0).stx_btime)
         except TypeError:
             btime = 0
     else:

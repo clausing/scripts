@@ -4,7 +4,7 @@
     Author: Jim Clausing <jclausing@isc.sans.edu>
 
     Date: 2026-11-25
-    Version: 1.3.1
+    Version: 1.3.3
 
     Perform file integrity check on Unix/Linux systems (hashes, timestamps,
     and, if libcap is available, file capabilities)
@@ -75,7 +75,7 @@ def load_libcap():
 
 libcap = load_libcap()
 
-__version_info__ = (1, 3, 2)
+__version_info__ = (1, 3, 3)
 __version__ = ".".join(map(str, __version_info__))
 # fields per db entry: path, inode, perms, links, uid, gid, size, ctime, mtime, btime, hash, caps
 NUM_FIELDS = 12
@@ -432,12 +432,15 @@ def process_entry(fname):
             if sys.version_info < (3, 15):
                 btime = "{:10.0f}".format(statx.statx(fname, follow_symlinks=False).btime)
             else:
-                btime = "{:10.0f}".format(os.statx(fname, 0, follow_symlinks=False).stx_btime)
+                stx = os.statx(fname, os.STATX_BTIME, follow_symlinks=False)
+                btime = "{:10.0f}".format(stx.stx_btime) if stx.stx_mask & os.STATX_BTIME else 0
         except TypeError:
             btime = 0
         except OSError as err:
-            # e.g. dangling symlink: python 3.15 os.statx() raises ENOENT even with follow_symlinks=False
-            print(f"Warning: no birth time for {fname}: {err.strerror}", file=sys.stderr)
+            # python 3.15 os.statx() raises ENOENT on dangling symlinks even with
+            # follow_symlinks=False; that is expected, so only warn for anything else
+            if not os.path.islink(fname):
+                print(f"Warning: no birth time for {fname}: {err.strerror}", file=sys.stderr)
             btime = 0
     else:
         btime = 0
